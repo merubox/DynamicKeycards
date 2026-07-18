@@ -1,0 +1,21 @@
+package com.mbx.dynamickeycards.registry;
+
+import com.mbx.dynamickeycards.DynamicKeycards;
+import com.mbx.dynamickeycards.block.CardReaderBlockEntity;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.neoforged.neoforge.registries.DeferredRegister;
+
+import java.util.function.Supplier;
+
+public class DKBlockEntities {
+    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
+            DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, DynamicKeycards.MOD_ID);
+
+    public static final Supplier<BlockEntityType<CardReaderBlockEntity>> CARD_READER =
+            BLOCK_ENTITIES.register("card_reader", () -> BlockEntityType.Builder.of(CardReaderBlockEntity::new,
+                    DKBlocks.INSERT_CARD_READER.get(),
+                    DKBlocks.TOUCH_CARD_READER.get(),
+                    DKBlocks.SWIPE_CARD_READER.get(),
+                    DKBlocks.ADVANCED_CARD_READER.get()).build(null));
+}

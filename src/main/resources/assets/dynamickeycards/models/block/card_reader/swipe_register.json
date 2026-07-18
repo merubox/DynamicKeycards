@@ -1,0 +1,202 @@
+{
+	"credit": "Made with Blockbench",
+	"parent": "block/block",
+	"textures": {
+		"0": "dynamickeycards:block/card_reader/swipe_register",
+		"particle": "dynamickeycards:block/card_reader/swipe_register"
+	},
+	"render_type": "cutout",
+	"elements": [
+		{
+			"from": [
+				5,
+				0,
+				3
+			],
+			"to": [
+				8,
+				2,
+				13
+			],
+			"faces": {
+				"up": {
+					"uv": [
+						0,
+						0,
+						3,
+						10
+					],
+					"texture": "#0"
+				},
+				"north": {
+					"uv": [
+						10,
+						0,
+						13,
+						2
+					],
+					"texture": "#0"
+				},
+				"south": {
+					"uv": [
+						10,
+						2,
+						13,
+						4
+					],
+					"texture": "#0"
+				},
+				"west": {
+					"uv": [
+						6,
+						0,
+						8,
+						10
+					],
+					"texture": "#0",
+					"rotation": 90
+				},
+				"east": {
+					"uv": [
+						10,
+						4,
+						16,
+						5
+					],
+					"texture": "#0"
+				},
+				"down": {
+					"uv": [
+						0,
+						0,
+						3,
+						10
+					],
+					"texture": "#0",
+					"cullface": "down"
+				}
+			}
+		},
+		{
+			"from": [
+				9,
+				0,
+				3
+			],
+			"to": [
+				11,
+				2,
+				13
+			],
+			"faces": {
+				"up": {
+					"uv": [
+						4,
+						0,
+						6,
+						10
+					],
+					"texture": "#0"
+				},
+				"north": {
+					"uv": [
+						14,
+						0,
+						16,
+						2
+					],
+					"texture": "#0"
+				},
+				"south": {
+					"uv": [
+						14,
+						2,
+						16,
+						4
+					],
+					"texture": "#0"
+				},
+				"east": {
+					"uv": [
+						8,
+						0,
+						10,
+						10
+					],
+					"texture": "#0",
+					"rotation": 90
+				},
+				"west": {
+					"uv": [
+						10,
+						4,
+						16,
+						5
+					],
+					"texture": "#0"
+				},
+				"down": {
+					"uv": [
+						4,
+						0,
+						6,
+						10
+					],
+					"texture": "#0",
+					"cullface": "down"
+				}
+			}
+		},
+		{
+			"from": [
+				8,
+				0,
+				3
+			],
+			"to": [
+				9,
+				1,
+				13
+			],
+			"faces": {
+				"up": {
+					"uv": [
+						3,
+						0,
+						4,
+						10
+					],
+					"texture": "#0"
+				},
+				"north": {
+					"uv": [
+						13,
+						0,
+						14,
+						1
+					],
+					"texture": "#0"
+				},
+				"south": {
+					"uv": [
+						13,
+						3,
+						14,
+						4
+					],
+					"texture": "#0"
+				},
+				"down": {
+					"uv": [
+						3,
+						0,
+						4,
+						10
+					],
+					"texture": "#0",
+					"cullface": "down"
+				}
+			}
+		}
+	]
+}

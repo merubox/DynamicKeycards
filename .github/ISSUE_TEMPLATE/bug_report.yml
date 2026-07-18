@@ -1,0 +1,44 @@
+name: Bug Report
+description: Something isn't working as expected
+labels: [bug]
+body:
+  - type: input
+    id: mod-version
+    attributes:
+      label: Mod version
+      placeholder: "0.0.1"
+    validations:
+      required: true
+  - type: input
+    id: loader-version
+    attributes:
+      label: Loader and game version
+      placeholder: "NeoForge 21.1.xx / Minecraft 1.21.1"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Place a card reader
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Attach latest.log or a crash report if you have one. Use a paste site (mclo.gs) for long logs.
+  - type: textarea
+    id: other-mods
+    attributes:
+      label: Other mods
+      description: If this only happens with other mods installed, list them (or attach your mod list).

@@ -1,0 +1,216 @@
+{
+  "variants": {
+    "mode=off,face=floor,facing=north": {
+      "model": "dynamickeycards:block/card_reader/swipe_off"
+    },
+    "mode=off,face=floor,facing=east": {
+      "model": "dynamickeycards:block/card_reader/swipe_off",
+      "y": 90
+    },
+    "mode=off,face=floor,facing=south": {
+      "model": "dynamickeycards:block/card_reader/swipe_off",
+      "y": 180
+    },
+    "mode=off,face=floor,facing=west": {
+      "model": "dynamickeycards:block/card_reader/swipe_off",
+      "y": 270
+    },
+    "mode=off,face=ceiling,facing=north": {
+      "model": "dynamickeycards:block/card_reader/swipe_off",
+      "x": 180
+    },
+    "mode=off,face=ceiling,facing=east": {
+      "model": "dynamickeycards:block/card_reader/swipe_off",
+      "x": 180,
+      "y": 90
+    },
+    "mode=off,face=ceiling,facing=south": {
+      "model": "dynamickeycards:block/card_reader/swipe_off",
+      "x": 180,
+      "y": 180
+    },
+    "mode=off,face=ceiling,facing=west": {
+      "model": "dynamickeycards:block/card_reader/swipe_off",
+      "x": 180,
+      "y": 270
+    },
+    "mode=off,face=wall,facing=north": {
+      "model": "dynamickeycards:block/card_reader/swipe_off",
+      "x": -90,
+      "y": 180
+    },
+    "mode=off,face=wall,facing=east": {
+      "model": "dynamickeycards:block/card_reader/swipe_off",
+      "x": -90,
+      "y": 270
+    },
+    "mode=off,face=wall,facing=south": {
+      "model": "dynamickeycards:block/card_reader/swipe_off",
+      "x": -90
+    },
+    "mode=off,face=wall,facing=west": {
+      "model": "dynamickeycards:block/card_reader/swipe_off",
+      "x": -90,
+      "y": 90
+    },
+    "mode=accepted,face=floor,facing=north": {
+      "model": "dynamickeycards:block/card_reader/swipe_accepted"
+    },
+    "mode=accepted,face=floor,facing=east": {
+      "model": "dynamickeycards:block/card_reader/swipe_accepted",
+      "y": 90
+    },
+    "mode=accepted,face=floor,facing=south": {
+      "model": "dynamickeycards:block/card_reader/swipe_accepted",
+      "y": 180
+    },
+    "mode=accepted,face=floor,facing=west": {
+      "model": "dynamickeycards:block/card_reader/swipe_accepted",
+      "y": 270
+    },
+    "mode=accepted,face=ceiling,facing=north": {
+      "model": "dynamickeycards:block/card_reader/swipe_accepted",
+      "x": 180
+    },
+    "mode=accepted,face=ceiling,facing=east": {
+      "model": "dynamickeycards:block/card_reader/swipe_accepted",
+      "x": 180,
+      "y": 90
+    },
+    "mode=accepted,face=ceiling,facing=south": {
+      "model": "dynamickeycards:block/card_reader/swipe_accepted",
+      "x": 180,
+      "y": 180
+    },
+    "mode=accepted,face=ceiling,facing=west": {
+      "model": "dynamickeycards:block/card_reader/swipe_accepted",
+      "x": 180,
+      "y": 270
+    },
+    "mode=accepted,face=wall,facing=north": {
+      "model": "dynamickeycards:block/card_reader/swipe_accepted",
+      "x": -90,
+      "y": 180
+    },
+    "mode=accepted,face=wall,facing=east": {
+      "model": "dynamickeycards:block/card_reader/swipe_accepted",
+      "x": -90,
+      "y": 270
+    },
+    "mode=accepted,face=wall,facing=south": {
+      "model": "dynamickeycards:block/card_reader/swipe_accepted",
+      "x": -90
+    },
+    "mode=accepted,face=wall,facing=west": {
+      "model": "dynamickeycards:block/card_reader/swipe_accepted",
+      "x": -90,
+      "y": 90
+    },
+    "mode=denied,face=floor,facing=north": {
+      "model": "dynamickeycards:block/card_reader/swipe_denied"
+    },
+    "mode=denied,face=floor,facing=east": {
+      "model": "dynamickeycards:block/card_reader/swipe_denied",
+      "y": 90
+    },
+    "mode=denied,face=floor,facing=south": {
+      "model": "dynamickeycards:block/card_reader/swipe_denied",
+      "y": 180
+    },
+    "mode=denied,face=floor,facing=west": {
+      "model": "dynamickeycards:block/card_reader/swipe_denied",
+      "y": 270
+    },
+    "mode=denied,face=ceiling,facing=north": {
+      "model": "dynamickeycards:block/card_reader/swipe_denied",
+      "x": 180
+    },
+    "mode=denied,face=ceiling,facing=east": {
+      "model": "dynamickeycards:block/card_reader/swipe_denied",
+      "x": 180,
+      "y": 90
+    },
+    "mode=denied,face=ceiling,facing=south": {
+      "model": "dynamickeycards:block/card_reader/swipe_denied",
+      "x": 180,
+      "y": 180
+    },
+    "mode=denied,face=ceiling,facing=west": {
+      "model": "dynamickeycards:block/card_reader/swipe_denied",
+      "x": 180,
+      "y": 270
+    },
+    "mode=denied,face=wall,facing=north": {
+      "model": "dynamickeycards:block/card_reader/swipe_denied",
+      "x": -90,
+      "y": 180
+    },
+    "mode=denied,face=wall,facing=east": {
+      "model": "dynamickeycards:block/card_reader/swipe_denied",
+      "x": -90,
+      "y": 270
+    },
+    "mode=denied,face=wall,facing=south": {
+      "model": "dynamickeycards:block/card_reader/swipe_denied",
+      "x": -90
+    },
+    "mode=denied,face=wall,facing=west": {
+      "model": "dynamickeycards:block/card_reader/swipe_denied",
+      "x": -90,
+      "y": 90
+    },
+    "mode=register,face=floor,facing=north": {
+      "model": "dynamickeycards:block/card_reader/swipe_register"
+    },
+    "mode=register,face=floor,facing=east": {
+      "model": "dynamickeycards:block/card_reader/swipe_register",
+      "y": 90
+    },
+    "mode=register,face=floor,facing=south": {
+      "model": "dynamickeycards:block/card_reader/swipe_register",
+      "y": 180
+    },
+    "mode=register,face=floor,facing=west": {
+      "model": "dynamickeycards:block/card_reader/swipe_register",
+      "y": 270
+    },
+    "mode=register,face=ceiling,facing=north": {
+      "model": "dynamickeycards:block/card_reader/swipe_register",
+      "x": 180
+    },
+    "mode=register,face=ceiling,facing=east": {
+      "model": "dynamickeycards:block/card_reader/swipe_register",
+      "x": 180,
+      "y": 90
+    },
+    "mode=register,face=ceiling,facing=south": {
+      "model": "dynamickeycards:block/card_reader/swipe_register",
+      "x": 180,
+      "y": 180
+    },
+    "mode=register,face=ceiling,facing=west": {
+      "model": "dynamickeycards:block/card_reader/swipe_register",
+      "x": 180,
+      "y": 270
+    },
+    "mode=register,face=wall,facing=north": {
+      "model": "dynamickeycards:block/card_reader/swipe_register",
+      "x": -90,
+      "y": 180
+    },
+    "mode=register,face=wall,facing=east": {
+      "model": "dynamickeycards:block/card_reader/swipe_register",
+      "x": -90,
+      "y": 270
+    },
+    "mode=register,face=wall,facing=south": {
+      "model": "dynamickeycards:block/card_reader/swipe_register",
+      "x": -90
+    },
+    "mode=register,face=wall,facing=west": {
+      "model": "dynamickeycards:block/card_reader/swipe_register",
+      "x": -90,
+      "y": 90
+    }
+  }
+}

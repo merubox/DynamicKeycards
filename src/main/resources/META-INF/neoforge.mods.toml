@@ -1,0 +1,24 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="MIT License"
+
+[[mods]]
+modId="dynamickeycards"
+version="${file.jarVersion}"
+displayName="Dynamic Keycards"
+description='''Keycards and player-bound card readers for redstone access control.'''
+authors="mailbox"
+
+[[dependencies.dynamickeycards]]
+    modId="neoforge"
+    type="required"
+    versionRange="[21.1,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.dynamickeycards]]
+    modId="minecraft"
+    type="required"
+    versionRange="[1.21.1]"
+    ordering="NONE"
+    side="BOTH"
