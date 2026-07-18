@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "A": {
+      "tag": "c:gems/amethyst"
+    },
+    "R": {
+      "tag": "c:dusts/redstone"
+    },
+    "L": {
+      "item": "minecraft:redstone_lamp"
+    },
+    "I": {
+      "tag": "c:ingots/gold"
+    }
+  },
+  "pattern": [
+    "AAA",
+    "RLR",
+    "III"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dynamickeycards:advanced_card_reader"
+  },
+  "show_notification": true
+}

@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "T": {
+      "item": "minecraft:rail"
+    },
+    "R": {
+      "tag": "c:dusts/redstone"
+    },
+    "L": {
+      "item": "minecraft:redstone_lamp"
+    },
+    "I": {
+      "tag": "c:ingots/iron"
+    }
+  },
+  "pattern": [
+    "TTT",
+    "RLR",
+    "III"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dynamickeycards:swipe_card_reader"
+  },
+  "show_notification": true
+}
