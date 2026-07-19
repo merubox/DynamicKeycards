@@ -22,6 +22,7 @@ public class DKCreativeTabs {
                         output.accept(DKBlocks.TOUCH_CARD_READER.get());
                         output.accept(DKBlocks.SWIPE_CARD_READER.get());
                         output.accept(DKBlocks.ADVANCED_CARD_READER.get());
+                        output.accept(DKBlocks.CARD_DUPLICATOR.get());
                         DKItems.TAB_ITEMS.forEach(item -> output.accept(item.get()));
                     })
                     .build());

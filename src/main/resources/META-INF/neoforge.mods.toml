@@ -1,6 +1,7 @@
 modLoader="javafml"
 loaderVersion="[1,)"
 license="MIT License"
+issueTrackerURL="https://github.com/merubox/DynamicKeycards/issues"
 
 [[mods]]
 modId="dynamickeycards"

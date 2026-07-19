@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "tag": "dynamickeycards:keycards"
+    },
+    "G": {
+      "tag": "c:ingots/gold"
+    },
+    "O": {
+      "tag": "c:obsidians"
+    }
+  },
+  "pattern": [
+    " C ",
+    "GOG",
+    "OOO"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dynamickeycards:card_duplicator"
+  },
+  "show_notification": true
+}

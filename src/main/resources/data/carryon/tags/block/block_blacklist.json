@@ -4,6 +4,7 @@
     "dynamickeycards:insert_card_reader",
     "dynamickeycards:touch_card_reader",
     "dynamickeycards:swipe_card_reader",
-    "dynamickeycards:advanced_card_reader"
+    "dynamickeycards:advanced_card_reader",
+    "dynamickeycards:card_duplicator"
   ]
 }
