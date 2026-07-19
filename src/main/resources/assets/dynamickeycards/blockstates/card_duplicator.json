@@ -1,0 +1,216 @@
+{
+  "variants": {
+    "mode=idle,face=floor,facing=north": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_idle"
+    },
+    "mode=idle,face=floor,facing=east": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_idle",
+      "y": 90
+    },
+    "mode=idle,face=floor,facing=south": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_idle",
+      "y": 180
+    },
+    "mode=idle,face=floor,facing=west": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_idle",
+      "y": 270
+    },
+    "mode=idle,face=ceiling,facing=north": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_idle",
+      "x": 180
+    },
+    "mode=idle,face=ceiling,facing=east": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_idle",
+      "x": 180,
+      "y": 90
+    },
+    "mode=idle,face=ceiling,facing=south": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_idle",
+      "x": 180,
+      "y": 180
+    },
+    "mode=idle,face=ceiling,facing=west": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_idle",
+      "x": 180,
+      "y": 270
+    },
+    "mode=idle,face=wall,facing=north": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_idle",
+      "x": -90,
+      "y": 180
+    },
+    "mode=idle,face=wall,facing=east": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_idle",
+      "x": -90,
+      "y": 270
+    },
+    "mode=idle,face=wall,facing=south": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_idle",
+      "x": -90
+    },
+    "mode=idle,face=wall,facing=west": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_idle",
+      "x": -90,
+      "y": 90
+    },
+    "mode=armed,face=floor,facing=north": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_armed"
+    },
+    "mode=armed,face=floor,facing=east": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_armed",
+      "y": 90
+    },
+    "mode=armed,face=floor,facing=south": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_armed",
+      "y": 180
+    },
+    "mode=armed,face=floor,facing=west": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_armed",
+      "y": 270
+    },
+    "mode=armed,face=ceiling,facing=north": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_armed",
+      "x": 180
+    },
+    "mode=armed,face=ceiling,facing=east": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_armed",
+      "x": 180,
+      "y": 90
+    },
+    "mode=armed,face=ceiling,facing=south": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_armed",
+      "x": 180,
+      "y": 180
+    },
+    "mode=armed,face=ceiling,facing=west": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_armed",
+      "x": 180,
+      "y": 270
+    },
+    "mode=armed,face=wall,facing=north": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_armed",
+      "x": -90,
+      "y": 180
+    },
+    "mode=armed,face=wall,facing=east": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_armed",
+      "x": -90,
+      "y": 270
+    },
+    "mode=armed,face=wall,facing=south": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_armed",
+      "x": -90
+    },
+    "mode=armed,face=wall,facing=west": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_armed",
+      "x": -90,
+      "y": 90
+    },
+    "mode=complete,face=floor,facing=north": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_complete"
+    },
+    "mode=complete,face=floor,facing=east": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_complete",
+      "y": 90
+    },
+    "mode=complete,face=floor,facing=south": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_complete",
+      "y": 180
+    },
+    "mode=complete,face=floor,facing=west": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_complete",
+      "y": 270
+    },
+    "mode=complete,face=ceiling,facing=north": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_complete",
+      "x": 180
+    },
+    "mode=complete,face=ceiling,facing=east": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_complete",
+      "x": 180,
+      "y": 90
+    },
+    "mode=complete,face=ceiling,facing=south": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_complete",
+      "x": 180,
+      "y": 180
+    },
+    "mode=complete,face=ceiling,facing=west": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_complete",
+      "x": 180,
+      "y": 270
+    },
+    "mode=complete,face=wall,facing=north": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_complete",
+      "x": -90,
+      "y": 180
+    },
+    "mode=complete,face=wall,facing=east": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_complete",
+      "x": -90,
+      "y": 270
+    },
+    "mode=complete,face=wall,facing=south": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_complete",
+      "x": -90
+    },
+    "mode=complete,face=wall,facing=west": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_complete",
+      "x": -90,
+      "y": 90
+    },
+    "mode=denied,face=floor,facing=north": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_denied"
+    },
+    "mode=denied,face=floor,facing=east": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_denied",
+      "y": 90
+    },
+    "mode=denied,face=floor,facing=south": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_denied",
+      "y": 180
+    },
+    "mode=denied,face=floor,facing=west": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_denied",
+      "y": 270
+    },
+    "mode=denied,face=ceiling,facing=north": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_denied",
+      "x": 180
+    },
+    "mode=denied,face=ceiling,facing=east": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_denied",
+      "x": 180,
+      "y": 90
+    },
+    "mode=denied,face=ceiling,facing=south": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_denied",
+      "x": 180,
+      "y": 180
+    },
+    "mode=denied,face=ceiling,facing=west": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_denied",
+      "x": 180,
+      "y": 270
+    },
+    "mode=denied,face=wall,facing=north": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_denied",
+      "x": -90,
+      "y": 180
+    },
+    "mode=denied,face=wall,facing=east": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_denied",
+      "x": -90,
+      "y": 270
+    },
+    "mode=denied,face=wall,facing=south": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_denied",
+      "x": -90
+    },
+    "mode=denied,face=wall,facing=west": {
+      "model": "dynamickeycards:block/card_duplicator/duplicator_denied",
+      "x": -90,
+      "y": 90
+    }
+  }
+}

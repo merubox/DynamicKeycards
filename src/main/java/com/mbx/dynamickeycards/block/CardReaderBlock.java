@@ -160,7 +160,15 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         if (stack.getItem() instanceof GoldenKeycardItem) {
             if (reader.isRegisterMode()) {
                 if (!level.isClientSide) {
-                    cancelRegisterMode(level, pos, state, reader, player);
+                    if (sneaking) {
+                        // full reset: wipe every registered card
+                        reader.clearCards();
+                        reader.setRegisterMode(false);
+                        setMode(level, pos, state, CardReaderMode.OFF);
+                        message(player, "reset_complete", ChatFormatting.WHITE);
+                    } else {
+                        cancelRegisterMode(level, pos, state, reader, player);
+                    }
                 }
                 return ItemInteractionResult.sidedSuccess(level.isClientSide);
             }
@@ -182,14 +190,22 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             }
             if (!level.isClientSide) {
                 UUID cardId = stack.get(DKComponents.CARD_ID.get());
-                if (cardId == null) {
-                    cardId = UUID.randomUUID();
-                    stack.set(DKComponents.CARD_ID.get(), cardId);
+                if (cardId != null && reader.isRegistered(cardId)) {
+                    // registering an already-registered card removes it instead
+                    reader.removeCard(cardId);
+                    reader.setRegisterMode(false);
+                    setMode(level, pos, state, CardReaderMode.OFF);
+                    message(player, "register_removed", ChatFormatting.WHITE);
+                } else {
+                    if (cardId == null) {
+                        cardId = UUID.randomUUID();
+                        stack.set(DKComponents.CARD_ID.get(), cardId);
+                    }
+                    reader.registerCard(cardId);
+                    reader.setRegisterMode(false);
+                    setMode(level, pos, state, CardReaderMode.OFF);
+                    message(player, "register_complete", ChatFormatting.GREEN);
                 }
-                reader.registerCard(cardId);
-                reader.setRegisterMode(false);
-                setMode(level, pos, state, CardReaderMode.OFF);
-                message(player, "register_complete", ChatFormatting.GREEN);
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
