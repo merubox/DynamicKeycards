@@ -3,7 +3,7 @@
 Keycards and player-bound card readers for redstone access control.
 NeoForge · Minecraft 1.21.1
 
-See [MANUAL.md](MANUAL.md) for the full user manual (Korean).
+See [MANUAL.md](MANUAL.md) for the full user manual ([Korean](MANUAL_KO.md)).
 
 ## Features
 
