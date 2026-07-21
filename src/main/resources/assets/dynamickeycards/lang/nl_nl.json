@@ -77,6 +77,7 @@
   "dynamickeycards.card_reader.register_complete": "Registratie voltooid",
   "dynamickeycards.card_reader.register_removed": "Registratie verwijderd",
   "dynamickeycards.card_reader.reset_complete": "Kaartlezer is gereset",
+  "dynamickeycards.card_reader.reset_confirm": "Sluip-klik nogmaals om alle geregistreerde kaarten te wissen",
   "dynamickeycards.card_reader.member_not_registerable": "Lid-toegangskaarten kunnen niet geregistreerd worden",
   "dynamickeycards.card_reader.register_limit": "Registratielimiet bereikt",
   "dynamickeycards.card_duplicator.source_prompt": "Voer de te kopiëren kaart in",

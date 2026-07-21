@@ -33,6 +33,7 @@ public class CardReaderBlockEntity extends BlockEntity {
     /** Own keys of individually blocked cards — the block always beats the allow list. */
     private final Set<UUID> blockedCards = new HashSet<>();
     private boolean registerMode;
+    private boolean resetPending;
 
     public CardReaderBlockEntity(BlockPos pos, BlockState state) {
         super(DKBlockEntities.CARD_READER.get(), pos, state);
@@ -58,7 +59,21 @@ public class CardReaderBlockEntity extends BlockEntity {
 
     public void setRegisterMode(boolean registerMode) {
         this.registerMode = registerMode;
+        this.resetPending = false;
         this.syncToClient();
+    }
+
+    /**
+     * Whether a golden-keycard full reset is awaiting its confirming second click.
+     * Deliberately transient (not saved): any register-mode change clears it, and a
+     * chunk reload safely cancels a stale confirmation.
+     */
+    public boolean isResetPending() {
+        return resetPending;
+    }
+
+    public void setResetPending(boolean resetPending) {
+        this.resetPending = resetPending;
     }
 
     public boolean isRegistered(UUID cardId) {

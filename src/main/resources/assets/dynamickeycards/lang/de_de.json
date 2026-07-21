@@ -77,6 +77,7 @@
   "dynamickeycards.card_reader.register_complete": "Registrierung abgeschlossen",
   "dynamickeycards.card_reader.register_removed": "Registrierung entfernt",
   "dynamickeycards.card_reader.reset_complete": "Kartenleser wurde zurückgesetzt",
+  "dynamickeycards.card_reader.reset_confirm": "Erneut schleichend klicken, um alle registrierten Karten zu löschen",
   "dynamickeycards.card_reader.member_not_registerable": "Mitgliedskarten können nicht registriert werden",
   "dynamickeycards.card_reader.register_limit": "Registrierungslimit erreicht",
   "dynamickeycards.card_duplicator.source_prompt": "Füge die zu kopierende Karte ein",

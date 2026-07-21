@@ -167,12 +167,19 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             if (reader.isRegisterMode()) {
                 if (!level.isClientSide) {
                     if (sneaking) {
-                        // full reset: wipe every registered card
-                        reader.clearCards();
-                        reader.setRegisterMode(false);
-                        setMode(level, pos, state, CardReaderMode.OFF);
-                        message(player, "reset_complete", ChatFormatting.WHITE);
-                        DKSounds.remove(level, pos);
+                        if (reader.isResetPending()) {
+                            // confirmed: wipe every registered card
+                            reader.clearCards();
+                            reader.setRegisterMode(false);
+                            setMode(level, pos, state, CardReaderMode.OFF);
+                            message(player, "reset_complete", ChatFormatting.WHITE);
+                            DKSounds.remove(level, pos);
+                        } else {
+                            // a full reset is destructive — ask for a confirming second click
+                            reader.setResetPending(true);
+                            message(player, "reset_confirm", ChatFormatting.RED);
+                            DKSounds.deny(level, pos);
+                        }
                     } else {
                         cancelRegisterMode(level, pos, state, reader, player);
                     }

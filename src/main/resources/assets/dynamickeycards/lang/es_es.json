@@ -77,6 +77,7 @@
   "dynamickeycards.card_reader.register_complete": "Registro completado",
   "dynamickeycards.card_reader.register_removed": "Registro eliminado",
   "dynamickeycards.card_reader.reset_complete": "Lector de tarjetas restablecido",
+  "dynamickeycards.card_reader.reset_confirm": "Vuelve a agacharte y hacer clic para borrar todas las tarjetas registradas",
   "dynamickeycards.card_reader.member_not_registerable": "Las tarjetas de miembro no se pueden registrar",
   "dynamickeycards.card_reader.register_limit": "Límite de registros alcanzado",
   "dynamickeycards.card_duplicator.source_prompt": "Inserta la tarjeta que quieres duplicar",

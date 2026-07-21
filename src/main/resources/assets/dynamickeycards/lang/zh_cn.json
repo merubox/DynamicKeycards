@@ -77,6 +77,7 @@
   "dynamickeycards.card_reader.register_complete": "注册完成",
   "dynamickeycards.card_reader.register_removed": "已解除注册",
   "dynamickeycards.card_reader.reset_complete": "读卡器已重置",
+  "dynamickeycards.card_reader.reset_confirm": "再次潜行右键将删除所有已注册的卡片",
   "dynamickeycards.card_reader.member_not_registerable": "成员门禁卡无法注册",
   "dynamickeycards.card_reader.register_limit": "已达到注册上限",
   "dynamickeycards.card_duplicator.source_prompt": "请手持要复制的卡输入",

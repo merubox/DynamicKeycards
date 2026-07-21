@@ -15,6 +15,9 @@ All notable changes to Dynamic Keycards are documented here.
   them — the per-reader block/unblock toggle for individual member cards is gone;
   all control goes through the manager card. (A member card blocked at a reader in
   an earlier dev build can only be cleared with the Golden Keycard full reset.)
+- **The Golden Keycard full reset now asks for confirmation.** In register mode, the
+  first golden sneak-click shows a red warning; a second sneak-click actually wipes
+  every registered card. Any other action (or leaving register mode) cancels it.
 
 ### Added
 - **GitHub README** (English/Korean) with a feature overview, progress table, and a

@@ -101,7 +101,8 @@ Results are audible too: **pass = high bell**, **registered = bright pling**,
 | Sneaking + a member card | "Member access cards can't be registered" (red) |
 | Standing + card | Nothing |
 | Standing + golden keycard | Cancel register mode |
-| Sneaking + golden keycard | **Full reset** — wipes every registered card ("Card reader has been reset") |
+| Sneaking + golden keycard (1st) | **Confirm reset** — "Sneak-click again to wipe every registered card" (red) |
+| Sneaking + golden keycard (2nd) | **Full reset** — wipes every registered card ("Card reader has been reset") |
 
 ---
 
