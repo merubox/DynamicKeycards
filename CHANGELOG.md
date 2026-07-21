@@ -71,7 +71,7 @@ All notable changes to Dynamic Keycards are documented here.
   name), an arrow, and the produced card on the right. Any reader / the duplicator
   is registered as a workstation, so you can jump straight from the block to its
   recipes. EMI is an optional dependency — the plugin is only loaded when EMI is
-  present. (JEI support is planned for a later version.)
+  present.
 
 ## 0.0.6
 

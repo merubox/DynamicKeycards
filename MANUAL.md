@@ -221,5 +221,4 @@ arrow, and the result on the right. Any reader and the duplicator are registered
 **workstations**, so you can look at the block in EMI and jump straight to its
 recipes (and back, via recipe-tree lookups on the cards).
 
-> EMI is optional — this only appears when EMI is installed. JEI support is planned
-> for a later version.
+> EMI is optional — this only appears when EMI is installed.

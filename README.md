@@ -65,8 +65,6 @@ Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, 
 | 0.0.9 | Feedback tones, Jade support, crown manager texture, plain-language descriptions |
 | 0.1.0 | New blank card recipe |
 
-**Planned:** JEI support, advancements, a survival path to the Golden Keycard.
-
 ## Requirements
 
 - Minecraft 1.21.1
