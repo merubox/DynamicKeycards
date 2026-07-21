@@ -215,7 +215,7 @@ interaction, not a crafting grid, they get their own categories:
   - **Issue member**: a manager access card + a blank card → a member access card.
   - **Co-manager**: a manager access card + a blank manager card → a second manager.
 
-Each entry reads left-to-right like a Create process: the input card(s), then the
+Each entry reads left-to-right as a process: the input card(s), then the
 machine block (shown in the middle — **hover it to see which machine it is**), an
 arrow, and the result on the right. Any reader and the duplicator are registered as
 **workstations**, so you can look at the block in EMI and jump straight to its

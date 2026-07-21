@@ -37,7 +37,7 @@ All notable changes to Dynamic Keycards are documented here.
 - **"Crew" terminology removed** from every tooltip, action-bar message, and the
   manuals, in all 7 languages. Relationships are described plainly instead: a manager
   card's registrations also apply to the member cards it issued.
-- **Hold-Shift tooltip now matches Create's official translations** per language
+- **Hold-Shift tooltip translations refined** per language
   (Korean: "설명 보기", Japanese: "説明を表示…", etc.; English stays
   "Hold [Shift] for Summary").
 - **EMI: the registering category's input now cycles blank card ↔ keycard**, since an
@@ -70,7 +70,7 @@ All notable changes to Dynamic Keycards are documented here.
   - **Card Duplicating** — fork (access + blank → access copy), issue member
     (manager + blank → member), and co-manager (manager + blank manager → manager).
 
-  Each entry is laid out Create-style: the input card(s) on the left, the machine
+  Each entry is laid out as a process: the input card(s) on the left, the machine
   block shown as a hoverable catalyst in the middle (hover it for the machine's
   name), an arrow, and the produced card on the right. Any reader / the duplicator
   is registered as a workstation, so you can jump straight from the block to its
@@ -164,5 +164,5 @@ Initial release.
   sneak-clicking; registered cards trigger a 3-second redstone pulse.
 - **16 colored keycards** with unique keys, dye recoloring, and shaped/shapeless
   recipes; **Golden Keycard** master card (creative-only).
-- Create-style tooltips, action-bar feedback, 7-language localization.
+- Hold-Shift summary tooltips, action-bar feedback, 7-language localization.
 - Compatibility with sneak-click pickup mods (e.g. Carry On).
