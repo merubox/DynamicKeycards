@@ -11,6 +11,10 @@ All notable changes to Dynamic Keycards are documented here.
   the middle, iron nugget ×3 on the bottom (replaces the heavy-pressure-plate recipe).
   Metal ingredients are tag-based (`c:dusts/redstone`, `c:nuggets/gold`,
   `c:nuggets/iron`), so equivalents from other mods work.
+- **Member access cards are now fully pass-only.** Register mode always rejects
+  them — the per-reader block/unblock toggle for individual member cards is gone;
+  all control goes through the manager card. (A member card blocked at a reader in
+  an earlier dev build can only be cleared with the Golden Keycard full reset.)
 
 ### Added
 - **GitHub README** (English/Korean) with a feature overview, progress table, and a

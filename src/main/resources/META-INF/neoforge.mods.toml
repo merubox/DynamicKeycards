@@ -1,6 +1,7 @@
 modLoader="javafml"
 loaderVersion="[1,)"
 license="MIT License"
+issueTrackerURL="https://github.com/merubox/DynamicKeycards/issues"
 
 [[mods]]
 modId="dynamickeycards"
@@ -21,4 +22,20 @@ authors="mailbox"
     type="required"
     versionRange="[1.21.1]"
     ordering="NONE"
+    side="BOTH"
+
+# Optional integrations — the EMI recipe categories and the Jade tooltip provider are
+# only loaded when the respective mod is present.
+[[dependencies.dynamickeycards]]
+    modId="emi"
+    type="optional"
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.dynamickeycards]]
+    modId="jade"
+    type="optional"
+    versionRange="[0,)"
+    ordering="AFTER"
     side="BOTH"

@@ -31,8 +31,8 @@ All item types appear in the **Dynamic Keycards** creative tab. In survival, key
   wherever the manager is registered, every issued member card passes too — and
   unregistering the manager shuts all of its member cards out of that reader.
 - **Member Access Cards** are issued by duplicating a manager onto blank cards
-  (same color is kept). They are pass-only: they can't be registered or duplicated,
-  but a reader can still shut out a single member with the usual register-mode toggle.
+  (same color is kept). They are pure pass tokens: they can't be registered,
+  duplicated, or managed per reader — all control goes through the manager card.
 - Duplicating a manager onto a **blank (unregistered) manager card** creates a **co-manager** —
   an exact clone with equal rights over the same member cards.
 - There is **no owner binding**: possession is authority. Hand the manager over to
@@ -98,7 +98,7 @@ Results are audible too: **pass = high bell**, **registered = bright pling**,
 | Sneaking + a card this reader accepts | **Unregister** ("Registration removed") — only this card; related copies keep working |
 | Sneaking + a blank card | **Register** — the blank card becomes a same-color **keycard** with a fresh key ("Registration complete", green) |
 | Sneaking + a keyed card this reader rejects | **Register** ("Registration complete", green) |
-| Sneaking + a member card the reader rejects | "Member access cards can't be registered" (red) |
+| Sneaking + a member card | "Member access cards can't be registered" (red) |
 | Standing + card | Nothing |
 | Standing + golden keycard | Cancel register mode |
 | Sneaking + golden keycard | **Full reset** — wipes every registered card ("Card reader has been reset") |

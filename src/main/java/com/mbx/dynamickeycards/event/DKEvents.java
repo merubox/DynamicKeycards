@@ -1,6 +1,7 @@
 package com.mbx.dynamickeycards.event;
 
 import com.mbx.dynamickeycards.DynamicKeycards;
+import com.mbx.dynamickeycards.block.CardDuplicatorBlock;
 import com.mbx.dynamickeycards.block.CardReaderBlock;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.Level;
@@ -26,7 +27,7 @@ public class DKEvents {
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         Level level = event.getLevel();
         BlockState state = level.getBlockState(event.getPos());
-        if (!(state.getBlock() instanceof CardReaderBlock)) {
+        if (!(state.getBlock() instanceof CardReaderBlock || state.getBlock() instanceof CardDuplicatorBlock)) {
             return;
         }
         event.setUseBlock(TriState.TRUE);
