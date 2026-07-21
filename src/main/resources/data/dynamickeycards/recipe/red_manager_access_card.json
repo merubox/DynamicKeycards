@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": {
+      "tag": "c:gems/diamond"
+    },
+    "C": {
+      "item": "dynamickeycards:red_blank_card"
+    }
+  },
+  "pattern": [
+    " D ",
+    "DCD",
+    " D "
+  ],
+  "result": {
+    "count": 1,
+    "id": "dynamickeycards:red_manager_access_card"
+  },
+  "show_notification": true
+}

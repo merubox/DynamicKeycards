@@ -2,22 +2,44 @@
 
 [한국어 버전 (Korean version)](MANUAL_KO.md)
 
-For version 0.0.2. Every interaction is a **right-click**; "sneak" means holding Shift.
+For version 0.1.0. Every interaction is a **right-click**; "sneak" means holding Shift.
 
 ---
 
 ## 1. Items
 
-### Keycards (16 colors)
-- One per vanilla dye color. A freshly crafted card is **blank** (carries no key).
-- Registering it on a card reader, or copying onto it with a card duplicator, stamps a
-  **unique key** onto the card (shown in the tooltip as `Key: xxxxxxxx`). Two cards of
-  the same color with different keys are different cards.
-- Recolor a card by crafting it with **any dye** (shapeless, any placement).
-  ⚠️ Dyeing wipes the key — the card comes out **blank**.
-- Registering a stack of keyed cards stamps the whole stack with the same key.
+All item types appear in the **Dynamic Keycards** creative tab. In survival, keycards and member cards are obtained by registering/duplicating.
 
-### Golden Keycard (master card)
+### Blank Cards → Keycards (16 colors)
+- A **Blank Card** is the craftable base card (one per vanilla dye color) and carries
+  no key.
+- **Registering** a blank card on a card reader turns it into a **Keycard** of the same
+  color, stamping its **own key** (tooltip: `Key: xxxxxxxx`). A keycard may also carry
+  **inherited keys** picked up through duplication — readers accept any of them, but
+  registration always stamps only the own key.
+- **Duplicating** a keycard onto a blank card also produces a keycard. **Duplication is
+  a fork**: the copy starts with everything the source could open at that moment, and
+  from then on the two are completely separate cards — registering or unregistering one
+  never affects the other.
+- Recolor any card by crafting it with **any dye** (shapeless, any placement).
+  ⚠️ Dyeing wipes every key — the card comes out as a **blank card** of the dye color.
+
+### Manager & Member Access Cards (16 colors each)
+- The **Manager Access Card** is crafted from a blank card; its first registration mints the
+  card's shared key. From then on **its registrations also apply to every member
+  card it issued**:
+  wherever the manager is registered, every issued member card passes too — and
+  unregistering the manager shuts all of its member cards out of that reader.
+- **Member Access Cards** are issued by duplicating a manager onto blank cards
+  (same color is kept). They are pass-only: they can't be registered or duplicated,
+  but a reader can still shut out a single member with the usual register-mode toggle.
+- Duplicating a manager onto a **blank (unregistered) manager card** creates a **co-manager** —
+  an exact clone with equal rights over the same member cards.
+- There is **no owner binding**: possession is authority. Hand the manager over to
+  transfer control; guard it (an ender chest works) to keep it. Dyeing a member card
+  recycles it into a blank card; managers can't be dyed.
+
+### Golden Keycard (skeleton key)
 - **Operates every card reader**, regardless of registration or ownership.
 - Can toggle **register mode** even on readers you don't own (see the reader table).
 - Never carries a key, can't be registered or duplicated. Creative-only for now.
@@ -35,6 +57,11 @@ status lights differ. Placeable on floors, walls, and ceilings.
 - Using a registered card (standing) emits a **3-second redstone pulse**
   (signal strength 15, strongly powering the mounting face).
 - One card can be registered on many readers, and one reader can hold many cards.
+- Forked cards are managed **individually**: removing one card's registration only
+  stops that card — related copies keep working.
+- Each reader holds at most a configurable number of registrations
+  (`maxRegistrationsPerReader` in `config/dynamickeycards-common.toml`, default 128);
+  past the limit, register mode reports "Registration limit reached".
 - Breaking a reader erases its binding and registrations.
 
 ### Status lights
@@ -44,6 +71,9 @@ status lights differ. Placeable on floors, walls, and ceilings.
 | Solid green | Accepted (pulse running, 3s) |
 | Solid red | Denied (1s) |
 | Blinking register display | Register mode armed (the Advanced type shows its blue screen with blinking LEDs) |
+
+Results are audible too: **pass = high bell**, **registered = bright pling**,
+**removed / cancelled / reset = low pling**, **denied = low bass**.
 
 ### Interaction table
 
@@ -65,8 +95,10 @@ status lights differ. Placeable on floors, walls, and ceilings.
 | Action | Result |
 |---|---|
 | Bare-hand click (standing or sneaking) | Cancel register mode ("Registration cancelled") |
-| Sneaking + new card | **Register** — a blank card gets a fresh key ("Registration complete", green) |
-| Sneaking + already-registered card | **Unregister** ("Registration removed") |
+| Sneaking + a card this reader accepts | **Unregister** ("Registration removed") — only this card; related copies keep working |
+| Sneaking + a blank card | **Register** — the blank card becomes a same-color **keycard** with a fresh key ("Registration complete", green) |
+| Sneaking + a keyed card this reader rejects | **Register** ("Registration complete", green) |
+| Sneaking + a member card the reader rejects | "Member access cards can't be registered" (red) |
 | Standing + card | Nothing |
 | Standing + golden keycard | Cancel register mode |
 | Sneaking + golden keycard | **Full reset** — wipes every registered card ("Card reader has been reset") |
@@ -75,14 +107,16 @@ status lights differ. Placeable on floors, walls, and ceilings.
 
 ## 3. Card Duplicator
 
-Copies a keyed card's key onto blank keycards.
+Forks a keyed card onto blank keycards.
 
 ### Basics
 - An 8×8 pad, placeable on floors, walls, and ceilings.
 - **No ownership** — anyone can use it.
 - **Emits no redstone.**
-- Insert the source card, then a blank card: the blank card receives the same key as
-  the source. Card colors are kept, so differently colored cards can share one key.
+- Insert the source card, then a blank card. The copy opens **everything the source
+  could open at that moment** (card colors don't matter), and from then on the two are
+  **completely separate cards**: registering, unregistering, or blocking one never
+  affects the other.
 - Breaking the duplicator discards any pending source.
 
 ### Status lights
@@ -93,6 +127,9 @@ Copies a keyed card's key onto blank keycards.
 | Solid green | Duplication complete (1.5s) |
 | Solid red | Rejected (1s) |
 
+The duplicator is audible too: **complete = high bell**, **source inserted = bright
+pling**, **cancelled = low pling**, **rejected = low bass**.
+
 ### Interaction table
 
 **Idle (no source inserted)** — same for everyone
@@ -101,8 +138,10 @@ Copies a keyed card's key onto blank keycards.
 |---|---|
 | Standing + bare hand | Nothing |
 | Sneaking + bare hand | Prompt ("Insert the card to duplicate") |
-| Sneaking + keyed card | **Source inserted** — green light starts blinking ("Now insert a blank keycard") |
-| Sneaking + blank card | Rejected ("A blank keycard has nothing to duplicate", red) |
+| Sneaking + keyed card | **Source inserted** — green light starts blinking ("Now insert a blank card") |
+| Sneaking + keyed manager card | **Source inserted** — the manager is never re-keyed |
+| Sneaking + blank card | Rejected ("A blank card has nothing to duplicate", red) |
+| Sneaking + member card | Rejected ("Member access cards can't be duplicated", red) |
 | Sneaking + golden keycard | Rejected ("Golden keycards can't be duplicated", red) |
 | Standing + card | Nothing |
 | Any other item | Nothing |
@@ -112,8 +151,9 @@ Copies a keyed card's key onto blank keycards.
 | Action | Result |
 |---|---|
 | Bare-hand click (standing or sneaking) | Cancel ("Duplication cancelled") |
-| Sneaking + blank card | **Duplication complete** — solid green ("Duplication complete", green) |
-| Sneaking + keyed card | Rejected ("That keycard isn't blank", red) — source kept |
+| Sneaking + blank card | **Duplication complete** — the blank card becomes a same-color **keycard** (fork copy), or a **member access card** when the source is a manager |
+| Sneaking + blank (unregistered) manager card | **Co-manager** issued (manager source only; otherwise "Only a manager access card can be copied onto a blank manager card", red) |
+| Sneaking + keyed card / member | Rejected ("That card isn't blank", red) — source kept |
 | Sneaking + golden keycard | Rejected ("Golden keycards can't be duplicated", red) — source kept |
 | Standing + card | Nothing |
 | Any other item | Nothing |
@@ -137,11 +177,14 @@ Middle and bottom rows are shared: **redstone – redstone lamp – redstone / i
 | Advanced | amethyst shard ×3 |
 
 ### Keycards
-- **White Keycard**: redstone ×3 / (empty) paper (empty) / heavy weighted pressure plate ×3
-- **Dyeing**: any keycard + any dye (shapeless) → that color's keycard (key is wiped)
+- **White Blank Card**: dried kelp ×3 / gold nugget – redstone – paper / iron nugget ×3
+- **Dyeing**: any card + any dye (shapeless) → that color's **blank card** (key is wiped)
 
 ### Card Duplicator
 (empty) any keycard (empty) / gold ingot – obsidian – gold ingot / obsidian ×3
+
+### Manager Access Card (per color)
+(empty) diamond (empty) / diamond – that color's blank card – diamond / (empty) diamond (empty)
 
 ### Golden Keycard
 No recipe (creative-only).
@@ -153,3 +196,30 @@ No recipe (creative-only).
   (e.g. Carry On).
 - Metal ingredients use common tags (`c:ingots/iron`, etc.), so equivalent materials
   from other mods work in the recipes.
+- With **Jade** installed, looking at a reader shows its owner and whether register
+  mode is armed, and looking at a duplicator shows whether a copy is pending
+  (optional — no effect when Jade is absent).
+
+---
+
+## 6. Recipe viewer (EMI)
+If [EMI](https://modrinth.com/mod/emi) is installed, the card **machines** show up in
+its recipe browser — because registering and duplicating happen through block
+interaction, not a crafting grid, they get their own categories:
+
+- **Card Registering** — registering a blank card or a keycard on a reader (16
+  entries). The input slot cycles between the blank card and the keycard, since an
+  already keyed keycard can be registered on more readers too.
+- **Card Duplicating** — the three duplicator outcomes:
+  - **Fork**: a keycard + a blank card → a new keycard copy.
+  - **Issue member**: a manager access card + a blank card → a member access card.
+  - **Co-manager**: a manager access card + a blank manager card → a second manager.
+
+Each entry reads left-to-right like a Create process: the input card(s), then the
+machine block (shown in the middle — **hover it to see which machine it is**), an
+arrow, and the result on the right. Any reader and the duplicator are registered as
+**workstations**, so you can look at the block in EMI and jump straight to its
+recipes (and back, via recipe-tree lookups on the cards).
+
+> EMI is optional — this only appears when EMI is installed. JEI support is planned
+> for a later version.
