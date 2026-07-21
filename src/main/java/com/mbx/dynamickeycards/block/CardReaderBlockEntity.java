@@ -63,16 +63,6 @@ public class CardReaderBlockEntity extends BlockEntity {
         this.syncToClient();
     }
 
-    public void removeCard(UUID cardId) {
-        registeredCards.remove(cardId);
-        this.syncToClient();
-    }
-
-    public void clearCards() {
-        registeredCards.clear();
-        this.syncToClient();
-    }
-
     private void syncToClient() {
         this.setChanged();
         if (level != null && !level.isClientSide) {
