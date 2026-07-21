@@ -1,3 +1,21 @@
-build/
-run/
+# Gradle
 .gradle/
+build/
+
+# NeoForge / ModDevGradle
+run/
+runs/
+.neoforge/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+out/
+
+# OS
+.DS_Store

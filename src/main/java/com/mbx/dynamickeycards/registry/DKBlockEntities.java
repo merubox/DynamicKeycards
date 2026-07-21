@@ -1,7 +1,6 @@
 package com.mbx.dynamickeycards.registry;
 
 import com.mbx.dynamickeycards.DynamicKeycards;
-import com.mbx.dynamickeycards.block.CardDuplicatorBlockEntity;
 import com.mbx.dynamickeycards.block.CardReaderBlockEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -19,8 +18,4 @@ public class DKBlockEntities {
                     DKBlocks.TOUCH_CARD_READER.get(),
                     DKBlocks.SWIPE_CARD_READER.get(),
                     DKBlocks.ADVANCED_CARD_READER.get()).build(null));
-
-    public static final Supplier<BlockEntityType<CardDuplicatorBlockEntity>> CARD_DUPLICATOR =
-            BLOCK_ENTITIES.register("card_duplicator", () -> BlockEntityType.Builder.of(CardDuplicatorBlockEntity::new,
-                    DKBlocks.CARD_DUPLICATOR.get()).build(null));
 }

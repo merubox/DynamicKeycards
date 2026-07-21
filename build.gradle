@@ -3,29 +3,11 @@ plugins {
     id 'net.neoforged.moddev' version '2.0.78'
 }
 
-version = '0.1.0'
+version = '0.0.1'
 group = 'com.mbx'
 base { archivesName = 'DynamicKeycards' }
 
 java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
-
-repositories {
-    // EMI + Jade (compile-only APIs) — Modrinth maven.
-    maven {
-        name = 'Modrinth'
-        url = 'https://api.modrinth.com/maven'
-        content { includeGroup 'maven.modrinth' }
-    }
-}
-
-dependencies {
-    // Recipe-viewer integration compiles against EMI's API; EMI is an optional runtime
-    // dependency and the @EmiEntrypoint plugin is only loaded when EMI is installed.
-    compileOnly 'maven.modrinth:emi:1.1.24+1.21.1+neoforge'
-    // Jade compat: compile against the API only. Jade is an optional runtime dependency;
-    // the @WailaPlugin class is loaded by Jade solely when Jade is installed.
-    compileOnly 'maven.modrinth:jade:15.10.5+neoforge'
-}
 
 neoForge {
     version = '21.1.233'
