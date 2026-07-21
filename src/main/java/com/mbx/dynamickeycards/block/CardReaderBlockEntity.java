@@ -30,7 +30,10 @@ public class CardReaderBlockEntity extends BlockEntity {
     @Nullable
     private UUID owner;
     private final Set<UUID> registeredCards = new HashSet<>();
+    /** Own keys of individually blocked cards — the block always beats the allow list. */
+    private final Set<UUID> blockedCards = new HashSet<>();
     private boolean registerMode;
+    private boolean resetPending;
 
     public CardReaderBlockEntity(BlockPos pos, BlockState state) {
         super(DKBlockEntities.CARD_READER.get(), pos, state);
@@ -38,6 +41,11 @@ public class CardReaderBlockEntity extends BlockEntity {
 
     public boolean isOwner(Player player) {
         return owner != null && owner.equals(player.getUUID());
+    }
+
+    @Nullable
+    public UUID getOwner() {
+        return owner;
     }
 
     public void setOwner(UUID owner) {
@@ -51,7 +59,21 @@ public class CardReaderBlockEntity extends BlockEntity {
 
     public void setRegisterMode(boolean registerMode) {
         this.registerMode = registerMode;
+        this.resetPending = false;
         this.syncToClient();
+    }
+
+    /**
+     * Whether a golden-keycard full reset is awaiting its confirming second click.
+     * Deliberately transient (not saved): any register-mode change clears it, and a
+     * chunk reload safely cancels a stale confirmation.
+     */
+    public boolean isResetPending() {
+        return resetPending;
+    }
+
+    public void setResetPending(boolean resetPending) {
+        this.resetPending = resetPending;
     }
 
     public boolean isRegistered(UUID cardId) {
@@ -63,6 +85,20 @@ public class CardReaderBlockEntity extends BlockEntity {
         this.syncToClient();
     }
 
+    /** True if any of the given keys is registered. Blocking is checked separately, first. */
+    public boolean isRegisteredAny(Iterable<UUID> keys) {
+        for (UUID key : keys) {
+            if (registeredCards.contains(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int getRegisteredCount() {
+        return registeredCards.size();
+    }
+
     public void removeCard(UUID cardId) {
         registeredCards.remove(cardId);
         this.syncToClient();
@@ -70,6 +106,21 @@ public class CardReaderBlockEntity extends BlockEntity {
 
     public void clearCards() {
         registeredCards.clear();
+        blockedCards.clear();
+        this.syncToClient();
+    }
+
+    public boolean isBlocked(UUID ownKey) {
+        return blockedCards.contains(ownKey);
+    }
+
+    public void blockCard(UUID ownKey) {
+        blockedCards.add(ownKey);
+        this.syncToClient();
+    }
+
+    public void unblockCard(UUID ownKey) {
+        blockedCards.remove(ownKey);
         this.syncToClient();
     }
 
@@ -91,6 +142,11 @@ public class CardReaderBlockEntity extends BlockEntity {
             cards.add(NbtUtils.createUUID(id));
         }
         tag.put("Cards", cards);
+        ListTag blocked = new ListTag();
+        for (UUID id : blockedCards) {
+            blocked.add(NbtUtils.createUUID(id));
+        }
+        tag.put("Blocked", blocked);
         tag.putBoolean("RegisterMode", registerMode);
     }
 
@@ -101,6 +157,10 @@ public class CardReaderBlockEntity extends BlockEntity {
         registeredCards.clear();
         for (Tag card : tag.getList("Cards", Tag.TAG_INT_ARRAY)) {
             registeredCards.add(NbtUtils.loadUUID(card));
+        }
+        blockedCards.clear();
+        for (Tag card : tag.getList("Blocked", Tag.TAG_INT_ARRAY)) {
+            blockedCards.add(NbtUtils.loadUUID(card));
         }
         registerMode = tag.getBoolean("RegisterMode");
     }

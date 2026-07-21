@@ -1,10 +1,15 @@
 package com.mbx.dynamickeycards.block;
 
 import com.mojang.serialization.MapCodec;
+import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.DKTooltips;
+import com.mbx.dynamickeycards.item.BlankKeycardItem;
+import com.mbx.dynamickeycards.item.CrewManagerKeycardItem;
+import com.mbx.dynamickeycards.item.CrewMemberKeycardItem;
 import com.mbx.dynamickeycards.item.GoldenKeycardItem;
 import com.mbx.dynamickeycards.item.KeycardItem;
 import com.mbx.dynamickeycards.registry.DKComponents;
+import com.mbx.dynamickeycards.registry.DKItems;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -37,10 +42,14 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.UUID;
 
+
 /**
- * Copies a keycard's key onto blank keycards. All interaction is sneak-right-click:
+ * Forks a keycard onto blank keycards: source and copy keep every key shared so far,
+ * then each side carries a fresh own key, so later registrations never propagate
+ * between them. All interaction is sneak-right-click:
  * insert the keyed source card (green light blinks), then a blank card to complete the
  * copy (solid green). Bare-hand sneaking prompts, or cancels an in-progress copy.
  * Rejected inputs (golden keycards, blank sources, non-blank targets) flash red for
@@ -95,11 +104,12 @@ public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock 
         if (player.isSpectator() || !(level.getBlockEntity(pos) instanceof CardDuplicatorBlockEntity duplicator)) {
             return InteractionResult.PASS;
         }
-        if (duplicator.getSourceKey() != null) {
+        if (duplicator.getSourceKeys() != null) {
             if (!level.isClientSide) {
-                duplicator.setSourceKey(null);
+                duplicator.setSourceKeys(null);
                 setMode(level, pos, state, DuplicatorMode.IDLE);
                 message(player, "cancelled", ChatFormatting.WHITE);
+                DKSounds.remove(level, pos);
             }
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
@@ -129,35 +139,73 @@ public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock 
         if (!level.isClientSide) {
             if (stack.getItem() instanceof GoldenKeycardItem) {
                 this.deny(state, level, pos, player, "golden");
-            } else if (duplicator.getSourceKey() == null) {
-                UUID key = stack.get(DKComponents.CARD_ID.get());
-                if (key == null) {
+            } else if (duplicator.getSourceKeys() == null) {
+                if (stack.getItem() instanceof CrewMemberKeycardItem) {
+                    this.deny(state, level, pos, player, "member_source");
+                } else if (KeycardItem.ownKey(stack) == null) {
                     this.deny(state, level, pos, player, "blank_source");
-                } else {
-                    duplicator.setSourceKey(key);
+                } else if (stack.getItem() instanceof CrewManagerKeycardItem) {
+                    // the manager is never re-keyed: issued cards must follow its future
+                    // registrations, so the group key stays the manager's own key
+                    duplicator.setSourceKeys(KeycardItem.allKeys(stack), true);
                     setMode(level, pos, state, DuplicatorMode.ARMED);
                     level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3f, 0.8f);
+                    DKSounds.arm(level, pos);
+                    message(player, "target_prompt", ChatFormatting.WHITE);
+                } else {
+                    // snapshot fork: freeze the keys both cards will share, then give the
+                    // source a fresh own key so future registrations no longer propagate
+                    duplicator.setSourceKeys(KeycardItem.allKeys(stack));
+                    KeycardItem.rekey(stack);
+                    setMode(level, pos, state, DuplicatorMode.ARMED);
+                    level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3f, 0.8f);
+                    DKSounds.arm(level, pos);
                     message(player, "target_prompt", ChatFormatting.WHITE);
                 }
             } else {
-                if (stack.get(DKComponents.CARD_ID.get()) != null) {
+                if (stack.getItem() instanceof CrewManagerKeycardItem && KeycardItem.ownKey(stack) == null) {
+                    // blank manager target → co-manager (source must be a manager)
+                    if (!duplicator.isSourceManager()) {
+                        this.deny(state, level, pos, player, "manager_target");
+                    } else {
+                        // an exact clone of the group key (the manager's own key = last frozen key)
+                        List<UUID> keys = duplicator.getSourceKeys();
+                        stack.set(DKComponents.CARD_ID.get(), keys.get(keys.size() - 1));
+                        this.complete(state, level, pos, player, duplicator);
+                    }
+                } else if (!(stack.getItem() instanceof BlankKeycardItem)) {
                     this.deny(state, level, pos, player, "not_blank");
+                } else if (duplicator.isSourceManager()) {
+                    // issue crew members: same-color member cards carrying the group keys
+                    ItemStack members = new ItemStack(DKItems.memberCardFor(stack), stack.getCount());
+                    KeycardItem.inheritFrom(members, duplicator.getSourceKeys());
+                    player.setItemInHand(hand, members);
+                    this.complete(state, level, pos, player, duplicator);
                 } else {
-                    stack.set(DKComponents.CARD_ID.get(), duplicator.getSourceKey());
-                    duplicator.setSourceKey(null);
-                    setMode(level, pos, state, DuplicatorMode.COMPLETE);
-                    level.scheduleTick(pos, this, COMPLETE_TICKS);
-                    level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3f, 1.2f);
-                    message(player, "complete", ChatFormatting.GREEN);
+                    // fork copy: a blank card becomes a keyed keycard inheriting the frozen keys
+                    ItemStack keyed = new ItemStack(DKItems.keycardFor(stack), stack.getCount());
+                    KeycardItem.inheritFrom(keyed, duplicator.getSourceKeys());
+                    player.setItemInHand(hand, keyed);
+                    this.complete(state, level, pos, player, duplicator);
                 }
             }
         }
         return ItemInteractionResult.sidedSuccess(level.isClientSide);
     }
 
+    private void complete(BlockState state, Level level, BlockPos pos, Player player, CardDuplicatorBlockEntity duplicator) {
+        duplicator.setSourceKeys(null);
+        setMode(level, pos, state, DuplicatorMode.COMPLETE);
+        level.scheduleTick(pos, this, COMPLETE_TICKS);
+        level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3f, 1.2f);
+        DKSounds.accept(level, pos);
+        message(player, "complete", ChatFormatting.GREEN);
+    }
+
     private void deny(BlockState state, Level level, BlockPos pos, Player player, String key) {
         setMode(level, pos, state, DuplicatorMode.DENIED);
         level.scheduleTick(pos, this, DENIED_TICKS);
+        DKSounds.deny(level, pos);
         message(player, key, ChatFormatting.RED);
     }
 
@@ -169,7 +217,7 @@ public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock 
             setMode(level, pos, state, DuplicatorMode.IDLE);
         } else if (mode == DuplicatorMode.DENIED) {
             boolean armed = level.getBlockEntity(pos) instanceof CardDuplicatorBlockEntity duplicator
-                    && duplicator.getSourceKey() != null;
+                    && duplicator.getSourceKeys() != null;
             setMode(level, pos, state, armed ? DuplicatorMode.ARMED : DuplicatorMode.IDLE);
         }
     }

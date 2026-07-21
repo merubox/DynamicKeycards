@@ -1,10 +1,15 @@
 package com.mbx.dynamickeycards.block;
 
 import com.mojang.serialization.MapCodec;
+import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.DKTooltips;
+import com.mbx.dynamickeycards.DKConfig;
+import com.mbx.dynamickeycards.item.BlankKeycardItem;
+import com.mbx.dynamickeycards.item.CrewMemberKeycardItem;
 import com.mbx.dynamickeycards.item.GoldenKeycardItem;
 import com.mbx.dynamickeycards.item.KeycardItem;
 import com.mbx.dynamickeycards.registry.DKComponents;
+import com.mbx.dynamickeycards.registry.DKItems;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -134,6 +139,7 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
                 armRegisterMode(level, pos, state, reader, player);
             } else {
                 message(player, "not_bound", ChatFormatting.RED);
+                DKSounds.deny(level, pos);
             }
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
@@ -161,11 +167,19 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             if (reader.isRegisterMode()) {
                 if (!level.isClientSide) {
                     if (sneaking) {
-                        // full reset: wipe every registered card
-                        reader.clearCards();
-                        reader.setRegisterMode(false);
-                        setMode(level, pos, state, CardReaderMode.OFF);
-                        message(player, "reset_complete", ChatFormatting.WHITE);
+                        if (reader.isResetPending()) {
+                            // confirmed: wipe every registered card
+                            reader.clearCards();
+                            reader.setRegisterMode(false);
+                            setMode(level, pos, state, CardReaderMode.OFF);
+                            message(player, "reset_complete", ChatFormatting.WHITE);
+                            DKSounds.remove(level, pos);
+                        } else {
+                            // a full reset is destructive — ask for a confirming second click
+                            reader.setResetPending(true);
+                            message(player, "reset_confirm", ChatFormatting.RED);
+                            DKSounds.deny(level, pos);
+                        }
                     } else {
                         cancelRegisterMode(level, pos, state, reader, player);
                     }
@@ -189,31 +203,68 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
                 return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
             }
             if (!level.isClientSide) {
-                UUID cardId = stack.get(DKComponents.CARD_ID.get());
-                if (cardId != null && reader.isRegistered(cardId)) {
-                    // registering an already-registered card removes it instead
-                    reader.removeCard(cardId);
-                    reader.setRegisterMode(false);
-                    setMode(level, pos, state, CardReaderMode.OFF);
-                    message(player, "register_removed", ChatFormatting.WHITE);
-                } else {
-                    if (cardId == null) {
-                        cardId = UUID.randomUUID();
-                        stack.set(DKComponents.CARD_ID.get(), cardId);
+                // one press always toggles this card's access; the block list is an
+                // internal detail — players only ever see "registered"/"removed"
+                UUID ownKey = KeycardItem.ownKey(stack);
+                if (stack.getItem() instanceof CrewMemberKeycardItem) {
+                    // members are pure pass tokens bound to their manager: no registering,
+                    // no per-reader toggling — all control goes through the manager card
+                    message(player, "member_not_registerable", ChatFormatting.RED);
+                    DKSounds.deny(level, pos);
+                } else if (stack.getItem() instanceof BlankKeycardItem) {
+                    // a blank card is keyed and turned into a keycard on registration
+                    if (reader.getRegisteredCount() >= DKConfig.MAX_REGISTRATIONS_PER_READER.get()) {
+                        message(player, "register_limit", ChatFormatting.RED);
+                        DKSounds.deny(level, pos);
+                    } else {
+                        UUID key = UUID.randomUUID();
+                        ItemStack keyed = new ItemStack(DKItems.keycardFor(stack), stack.getCount());
+                        keyed.set(DKComponents.CARD_ID.get(), key);
+                        player.setItemInHand(hand, keyed);
+                        reader.registerCard(key);
+                        message(player, "register_complete", ChatFormatting.GREEN);
+                        DKSounds.confirm(level, pos);
                     }
-                    reader.registerCard(cardId);
-                    reader.setRegisterMode(false);
-                    setMode(level, pos, state, CardReaderMode.OFF);
+                } else if (ownKey != null && reader.isBlocked(ownKey)) {
+                    reader.unblockCard(ownKey);
                     message(player, "register_complete", ChatFormatting.GREEN);
+                    DKSounds.confirm(level, pos);
+                } else if (ownKey != null && reader.isRegistered(ownKey)) {
+                    reader.removeCard(ownKey);
+                    if (reader.isRegisteredAny(KeycardItem.inheritedKeys(stack))) {
+                        reader.blockCard(ownKey);
+                    }
+                    message(player, "register_removed", ChatFormatting.WHITE);
+                    DKSounds.remove(level, pos);
+                } else if (ownKey != null && reader.isRegisteredAny(KeycardItem.inheritedKeys(stack))) {
+                    // passes only through inherited keys: shut out just this card
+                    reader.blockCard(ownKey);
+                    message(player, "register_removed", ChatFormatting.WHITE);
+                    DKSounds.remove(level, pos);
+                } else if (reader.getRegisteredCount() >= DKConfig.MAX_REGISTRATIONS_PER_READER.get()) {
+                    message(player, "register_limit", ChatFormatting.RED);
+                    DKSounds.deny(level, pos);
+                } else {
+                    // keyed keycard, or a blank crew manager minting its group key
+                    if (ownKey == null) {
+                        ownKey = UUID.randomUUID();
+                        stack.set(DKComponents.CARD_ID.get(), ownKey);
+                    }
+                    reader.registerCard(ownKey);
+                    message(player, "register_complete", ChatFormatting.GREEN);
+                    DKSounds.confirm(level, pos);
                 }
+                reader.setRegisterMode(false);
+                setMode(level, pos, state, CardReaderMode.OFF);
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
         if (sneaking) {
             return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
         }
-        UUID cardId = stack.get(DKComponents.CARD_ID.get());
-        if (cardId != null && reader.isRegistered(cardId)) {
+        UUID ownKey = KeycardItem.ownKey(stack);
+        boolean blocked = ownKey != null && reader.isBlocked(ownKey);
+        if (!blocked && ownKey != null && reader.isRegisteredAny(KeycardItem.allKeys(stack))) {
             if (state.getValue(MODE) != CardReaderMode.OFF) {
                 return ItemInteractionResult.CONSUME;
             }
@@ -226,6 +277,7 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
                 level.scheduleTick(pos, this, DENIED_TICKS);
             }
             message(player, "unregistered_card", ChatFormatting.RED);
+            DKSounds.deny(level, pos);
         }
         return ItemInteractionResult.CONSUME;
     }
@@ -235,6 +287,9 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         this.updateNeighbors(state, level, pos);
         level.scheduleTick(pos, this, PRESS_TICKS);
         level.playSound(player, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3f, 0.6f);
+        if (!level.isClientSide) {
+            DKSounds.accept(level, pos);
+        }
         level.gameEvent(player, GameEvent.BLOCK_ACTIVATE, pos);
     }
 
@@ -242,12 +297,14 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         reader.setRegisterMode(true);
         setMode(level, pos, state, CardReaderMode.REGISTER);
         message(player, "register_prompt", ChatFormatting.WHITE);
+        DKSounds.arm(level, pos);
     }
 
     private void cancelRegisterMode(Level level, BlockPos pos, BlockState state, CardReaderBlockEntity reader, Player player) {
         reader.setRegisterMode(false);
         setMode(level, pos, state, CardReaderMode.OFF);
         message(player, "register_cancelled", ChatFormatting.WHITE);
+        DKSounds.remove(level, pos);
     }
 
     @Override

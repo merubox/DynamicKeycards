@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "K": {
+      "item": "minecraft:dried_kelp"
+    },
+    "R": {
+      "tag": "c:dusts/redstone"
+    },
+    "P": {
+      "item": "minecraft:paper"
+    },
+    "G": {
+      "tag": "c:nuggets/gold"
+    },
+    "N": {
+      "tag": "c:nuggets/iron"
+    }
+  },
+  "pattern": [
+    "KKK",
+    "GRP",
+    "NNN"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dynamickeycards:white_blank_card"
+  },
+  "show_notification": true
+}
