@@ -1,6 +1,7 @@
 package com.mbx.dynamickeycards.registry;
 
 import com.mbx.dynamickeycards.DynamicKeycards;
+import com.mojang.serialization.Codec;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
@@ -35,5 +36,26 @@ public class DKComponents {
             () -> DataComponentType.<List<UUID>>builder()
                     .persistent(UUIDUtil.CODEC.listOf())
                     .networkSynchronized(UUIDUtil.STREAM_CODEC.apply(ByteBufCodecs.list()))
+                    .build());
+
+    /**
+     * The player an Estate Keycard is bound to. It behaves like a golden keycard, but only
+     * on readers owned by this player — regardless of who currently holds the card.
+     */
+    public static final Supplier<DataComponentType<UUID>> BOUND_OWNER = COMPONENTS.register("bound_owner",
+            () -> DataComponentType.<UUID>builder()
+                    .persistent(UUIDUtil.CODEC)
+                    .networkSynchronized(UUIDUtil.STREAM_CODEC)
+                    .build());
+
+    /**
+     * Game-time deadline for the two-step Estate Keycard activation: the first right-click
+     * sets it, and a second right-click before it passes binds the card. Expires on its own
+     * so a stale first click never binds unexpectedly.
+     */
+    public static final Supplier<DataComponentType<Long>> ACTIVATION_DEADLINE = COMPONENTS.register("activation_deadline",
+            () -> DataComponentType.<Long>builder()
+                    .persistent(Codec.LONG)
+                    .networkSynchronized(ByteBufCodecs.VAR_LONG)
                     .build());
 }

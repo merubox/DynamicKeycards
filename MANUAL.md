@@ -2,7 +2,7 @@
 
 [한국어 버전 (Korean version)](MANUAL_KO.md)
 
-For version 0.1.0. Every interaction is a **right-click**; "sneak" means holding Shift.
+For version 0.1.1. Every interaction is a **right-click**; "sneak" means holding Shift.
 
 ---
 
@@ -43,6 +43,16 @@ All item types appear in the **Dynamic Keycards** creative tab. In survival, key
 - **Operates every card reader**, regardless of registration or ownership.
 - Can toggle **register mode** even on readers you don't own (see the reader table).
 - Never carries a key, can't be registered or duplicated. Creative-only for now.
+
+### Estate Keycard (owner-scoped master key)
+- Crafted, then **activated by right-clicking**: the first click asks to confirm (white),
+  a second click within ~5s binds it to you (green, "Bound to …") and writes your id onto
+  the card.
+- Once bound, it works exactly like a **golden keycard, but only on readers you own**
+  (readers you placed) — standing use passes them, sneaking arms/toggles register mode.
+  It does nothing on other players' readers.
+- The binding lives on the card, so it **keeps working after you hand it to someone
+  else**. It can't be registered or duplicated.
 
 ---
 
@@ -185,10 +195,13 @@ Middle and bottom rows are shared: **redstone – redstone lamp – redstone / i
 (empty) any keycard (empty) / gold ingot – obsidian – gold ingot / obsidian ×3
 
 ### Manager Access Card (per color)
-(empty) diamond (empty) / diamond – that color's blank card – diamond / (empty) diamond (empty)
+paper – gold ingot – paper / gold ingot – that color's blank card – gold ingot / paper – gold ingot – paper
 
 ### Golden Keycard
 No recipe (creative-only).
+
+### Estate Keycard
+obsidian – redstone – obsidian / diamond – any blank card – gold ingot / obsidian – redstone – obsidian
 
 ---
 

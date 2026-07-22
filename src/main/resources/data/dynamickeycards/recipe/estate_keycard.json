@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "O": { "item": "minecraft:obsidian" },
+    "R": { "tag": "c:dusts/redstone" },
+    "D": { "tag": "c:gems/diamond" },
+    "C": { "tag": "dynamickeycards:blank_cards" },
+    "G": { "tag": "c:ingots/gold" }
+  },
+  "pattern": [
+    "ORO",
+    "DCG",
+    "ORO"
+  ],
+  "result": { "count": 1, "id": "dynamickeycards:estate_keycard" },
+  "show_notification": true
+}

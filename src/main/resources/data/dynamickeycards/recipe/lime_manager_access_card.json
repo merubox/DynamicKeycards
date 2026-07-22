@@ -2,21 +2,15 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "D": {
-      "tag": "c:gems/diamond"
-    },
-    "C": {
-      "item": "dynamickeycards:lime_blank_card"
-    }
+    "P": { "item": "minecraft:paper" },
+    "G": { "tag": "c:ingots/gold" },
+    "C": { "item": "dynamickeycards:lime_blank_card" }
   },
   "pattern": [
-    " D ",
-    "DCD",
-    " D "
+    "PGP",
+    "GCG",
+    "PGP"
   ],
-  "result": {
-    "count": 1,
-    "id": "dynamickeycards:lime_manager_access_card"
-  },
+  "result": { "count": 1, "id": "dynamickeycards:lime_manager_access_card" },
   "show_notification": true
 }

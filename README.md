@@ -27,6 +27,9 @@ On top of that:
   binding.
 - **Golden Keycard** — a skeleton key that operates any reader and can arm register
   mode on readers you don't own (creative-only for now).
+- **Estate Keycard** — crafted, then right-click to bind it to you (two-step confirm).
+  It then works like a golden keycard, but only on the readers you own — and it keeps
+  working even after you hand it to someone else.
 - **Per-card control** — one press in register mode always toggles exactly the card
   you're holding: accepted cards get removed, rejected cards get registered. Related
   copies are never affected. (Member cards are exempt — they're managed only through
@@ -65,6 +68,7 @@ Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, 
 | 0.0.8 | Naming corrections; EMI recipes for every color |
 | 0.0.9 | Feedback tones, Jade support, crown manager texture, plain-language descriptions |
 | 0.1.0 | New blank card recipe |
+| 0.1.1 | Estate Keycard (owner-scoped master key) |
 
 ## Requirements
 
