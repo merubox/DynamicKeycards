@@ -6,6 +6,7 @@ import com.mbx.dynamickeycards.DKTooltips;
 import com.mbx.dynamickeycards.item.BlankKeycardItem;
 import com.mbx.dynamickeycards.item.CrewManagerKeycardItem;
 import com.mbx.dynamickeycards.item.CrewMemberKeycardItem;
+import com.mbx.dynamickeycards.item.EstateKeycardItem;
 import com.mbx.dynamickeycards.item.GoldenKeycardItem;
 import com.mbx.dynamickeycards.item.KeycardItem;
 import com.mbx.dynamickeycards.registry.DKComponents;
@@ -139,6 +140,8 @@ public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock 
         if (!level.isClientSide) {
             if (stack.getItem() instanceof GoldenKeycardItem) {
                 this.deny(state, level, pos, player, "golden");
+            } else if (stack.getItem() instanceof EstateKeycardItem) {
+                this.deny(state, level, pos, player, "estate");
             } else if (duplicator.getSourceKeys() == null) {
                 if (stack.getItem() instanceof CrewMemberKeycardItem) {
                     this.deny(state, level, pos, player, "member_source");

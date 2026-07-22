@@ -4,6 +4,22 @@
 
 All notable changes to Dynamic Keycards are documented here.
 
+## 0.1.1
+
+### Changed
+- **Manager Access Card recipe rebalanced**: paper – gold ingot – paper / gold ingot –
+  that color's blank card – gold ingot / paper – gold ingot – paper (was diamonds
+  around the card).
+
+### Added
+- **Estate Keycard** — a craftable, owner-scoped master key. Right-click to activate it:
+  the first click asks to confirm (white), a second click within ~5s binds it to you
+  (green) and writes your id onto the card. It then behaves like the Golden Keycard, but
+  only on readers you own. The binding lives on the card, so it keeps working after being
+  handed to another player. It can't be registered or duplicated. Recipe: obsidian –
+  redstone – obsidian / diamond – any blank card – gold ingot / obsidian – redstone –
+  obsidian.
+
 ## 0.1.0
 
 ### Changed

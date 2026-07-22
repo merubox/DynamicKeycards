@@ -6,6 +6,7 @@ import com.mbx.dynamickeycards.DKTooltips;
 import com.mbx.dynamickeycards.DKConfig;
 import com.mbx.dynamickeycards.item.BlankKeycardItem;
 import com.mbx.dynamickeycards.item.CrewMemberKeycardItem;
+import com.mbx.dynamickeycards.item.EstateKeycardItem;
 import com.mbx.dynamickeycards.item.GoldenKeycardItem;
 import com.mbx.dynamickeycards.item.KeycardItem;
 import com.mbx.dynamickeycards.registry.DKComponents;
@@ -163,40 +164,29 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
         }
         boolean sneaking = player.isShiftKeyDown();
+        // The golden keycard is a master key for every reader; an Estate keycard is one for
+        // the readers owned by the player it's bound to. Both drive the same behavior.
         if (stack.getItem() instanceof GoldenKeycardItem) {
-            if (reader.isRegisterMode()) {
-                if (!level.isClientSide) {
-                    if (sneaking) {
-                        if (reader.isResetPending()) {
-                            // confirmed: wipe every registered card
-                            reader.clearCards();
-                            reader.setRegisterMode(false);
-                            setMode(level, pos, state, CardReaderMode.OFF);
-                            message(player, "reset_complete", ChatFormatting.WHITE);
-                            DKSounds.remove(level, pos);
-                        } else {
-                            // a full reset is destructive — ask for a confirming second click
-                            reader.setResetPending(true);
-                            message(player, "reset_confirm", ChatFormatting.RED);
-                            DKSounds.deny(level, pos);
-                        }
-                    } else {
-                        cancelRegisterMode(level, pos, state, reader, player);
-                    }
-                }
-                return ItemInteractionResult.sidedSuccess(level.isClientSide);
+            return masterKeyInteract(state, level, pos, player, sneaking, reader);
+        }
+        if (stack.getItem() instanceof EstateKeycardItem) {
+            UUID cardOwner = EstateKeycardItem.boundOwner(stack);
+            if (cardOwner != null && cardOwner.equals(reader.getOwner())) {
+                return masterKeyInteract(state, level, pos, player, sneaking, reader);
             }
-            if (state.getValue(MODE) != CardReaderMode.OFF) {
-                return ItemInteractionResult.CONSUME;
-            }
+            // unbound, or bound to a different owner's readers: no access here
             if (sneaking) {
-                if (!level.isClientSide) {
-                    armRegisterMode(level, pos, state, reader, player);
-                }
-            } else {
-                this.acceptPulse(state, level, pos, player);
+                return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
             }
-            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+            if (!level.isClientSide) {
+                if (state.getValue(MODE) == CardReaderMode.OFF) {
+                    setMode(level, pos, state, CardReaderMode.DENIED);
+                    level.scheduleTick(pos, this, DENIED_TICKS);
+                }
+                message(player, "unregistered_card", ChatFormatting.RED);
+                DKSounds.deny(level, pos);
+            }
+            return ItemInteractionResult.CONSUME;
         }
         if (reader.isRegisterMode()) {
             if (!sneaking) {
@@ -280,6 +270,48 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             DKSounds.deny(level, pos);
         }
         return ItemInteractionResult.CONSUME;
+    }
+
+    /**
+     * Master-key behavior shared by the golden keycard and a matching Estate keycard: in
+     * register mode, sneaking asks to confirm / performs the full reset and standing cancels;
+     * otherwise sneaking arms register mode and standing pulses the reader open.
+     */
+    private ItemInteractionResult masterKeyInteract(BlockState state, Level level, BlockPos pos,
+                                                    Player player, boolean sneaking, CardReaderBlockEntity reader) {
+        if (reader.isRegisterMode()) {
+            if (!level.isClientSide) {
+                if (sneaking) {
+                    if (reader.isResetPending()) {
+                        // confirmed: wipe every registered card
+                        reader.clearCards();
+                        reader.setRegisterMode(false);
+                        setMode(level, pos, state, CardReaderMode.OFF);
+                        message(player, "reset_complete", ChatFormatting.WHITE);
+                        DKSounds.remove(level, pos);
+                    } else {
+                        // a full reset is destructive — ask for a confirming second click
+                        reader.setResetPending(true);
+                        message(player, "reset_confirm", ChatFormatting.RED);
+                        DKSounds.deny(level, pos);
+                    }
+                } else {
+                    cancelRegisterMode(level, pos, state, reader, player);
+                }
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+        if (state.getValue(MODE) != CardReaderMode.OFF) {
+            return ItemInteractionResult.CONSUME;
+        }
+        if (sneaking) {
+            if (!level.isClientSide) {
+                armRegisterMode(level, pos, state, reader, player);
+            }
+        } else {
+            this.acceptPulse(state, level, pos, player);
+        }
+        return ItemInteractionResult.sidedSuccess(level.isClientSide);
     }
 
     private void acceptPulse(BlockState state, Level level, BlockPos pos, Player player) {

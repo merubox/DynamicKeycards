@@ -4,6 +4,7 @@ import com.mbx.dynamickeycards.DynamicKeycards;
 import com.mbx.dynamickeycards.item.BlankKeycardItem;
 import com.mbx.dynamickeycards.item.CrewManagerKeycardItem;
 import com.mbx.dynamickeycards.item.CrewMemberKeycardItem;
+import com.mbx.dynamickeycards.item.EstateKeycardItem;
 import com.mbx.dynamickeycards.item.GoldenKeycardItem;
 import com.mbx.dynamickeycards.item.KeycardItem;
 import net.minecraft.world.item.Item;
@@ -38,6 +39,7 @@ public class DKItems {
     public static final List<DeferredItem<Item>> MEMBER_CARDS = new ArrayList<>();
 
     public static final DeferredItem<Item> GOLDEN_KEYCARD;
+    public static final DeferredItem<Item> ESTATE_KEYCARD;
 
     static {
         // Everything is shown in the creative tab; the keyed/member results are also obtainable
@@ -56,6 +58,8 @@ public class DKItems {
         }
         GOLDEN_KEYCARD = register("golden_keycard",
                 () -> new GoldenKeycardItem(new Item.Properties().stacksTo(1)));
+        ESTATE_KEYCARD = register("estate_keycard",
+                () -> new EstateKeycardItem(new Item.Properties().stacksTo(1)));
     }
 
     /** Index of this card's color in {@link #COLORS}, or 0 if unrecognized. */
