@@ -69,6 +69,7 @@ Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, 
 | 0.0.9 | Feedback tones, Jade support, crown manager texture, plain-language descriptions |
 | 0.1.0 | New blank card recipe |
 | 0.1.1 | Estate Keycard (owner-scoped master key) |
+| 0.1.2 | Configurable pulse length, reader ownership transfer command |
 
 ## Requirements
 

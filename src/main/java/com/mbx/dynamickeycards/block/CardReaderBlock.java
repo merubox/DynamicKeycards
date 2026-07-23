@@ -53,10 +53,11 @@ import java.util.UUID;
  * used with a keycard registered on it. Placeable on floor, wall, or ceiling.
  *
  * <p>The front panel has four visual states ({@link CardReaderMode}): idle, green while
- * the {@link #PRESS_TICKS} accept pulse runs, red for {@link #DENIED_TICKS} after a
- * rejected keycard, and the register display while register mode is armed. State changes
- * only start from OFF (the reader is "busy" during a pulse or denial flash), so scheduled
- * ticks can never strand the redstone output. A golden keycard bypasses registration:
+ * the accept pulse runs, red for {@link #DENIED_TICKS} after a rejected keycard, and the
+ * register display while register mode is armed. The pulse length comes from the reader
+ * (its per-block override, else {@link DKConfig#DEFAULT_PULSE_LENGTH_TICKS}). State
+ * changes only start from OFF (the reader is "busy" during a pulse or denial flash), so
+ * scheduled ticks can never strand the redstone output. A golden keycard bypasses registration:
  * standing use always passes, sneaking use toggles register mode like the owner's bare
  * hand would.
  */
@@ -65,8 +66,6 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
     public static final BooleanProperty PRESSED = BooleanProperty.create("pressed");
     public static final EnumProperty<CardReaderMode> MODE = EnumProperty.create("mode", CardReaderMode.class);
 
-    /** Length of the accept pulse. */
-    public static final int PRESS_TICKS = 60;
     /** How long the red "denied" light stays on. */
     public static final int DENIED_TICKS = 20;
 
@@ -315,9 +314,12 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
     }
 
     private void acceptPulse(BlockState state, Level level, BlockPos pos, Player player) {
+        int pulseTicks = level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader
+                ? reader.getPulseLength()
+                : DKConfig.DEFAULT_PULSE_LENGTH_TICKS.get();
         level.setBlock(pos, state.setValue(MODE, CardReaderMode.ACCEPTED).setValue(PRESSED, true), Block.UPDATE_ALL);
         this.updateNeighbors(state, level, pos);
-        level.scheduleTick(pos, this, PRESS_TICKS);
+        level.scheduleTick(pos, this, pulseTicks);
         level.playSound(player, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3f, 0.6f);
         if (!level.isClientSide) {
             DKSounds.accept(level, pos);

@@ -4,6 +4,23 @@
 
 All notable changes to Dynamic Keycards are documented here.
 
+## 0.1.2
+
+### Added
+- **Configurable default pulse length** (`defaultPulseLengthTicks` in
+  `config/dynamickeycards-common.toml`, default 60 = 3 seconds): how long a reader's
+  accept pulse runs. Readers can now also store their own per-reader pulse length —
+  the storage groundwork for the planned golden/estate-keycard settings UI.
+- **`/dynamickeycards transfer <player>`**: while looking at one of your readers,
+  hands its ownership to another player (registrations are kept). Operators can
+  transfer any reader.
+
+### Fixed
+- Golden Keycard tooltip: sneak-click arms register mode / resets, with clearer Korean
+  reset-confirmation wording.
+- Estate Keycard: the "Bound to %s" message now shows the player name; Korean name
+  구역 키 카드, Chinese 领域钥匙卡.
+
 ## 0.1.1
 
 ### Changed
