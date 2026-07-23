@@ -1,5 +1,6 @@
 package com.mbx.dynamickeycards.block;
 
+import com.mbx.dynamickeycards.DKConfig;
 import com.mbx.dynamickeycards.registry.DKBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -34,6 +35,12 @@ public class CardReaderBlockEntity extends BlockEntity {
     private final Set<UUID> blockedCards = new HashSet<>();
     private boolean registerMode;
     private boolean resetPending;
+    /**
+     * Per-reader accept-pulse override in ticks; {@code -1} means "use the config
+     * default". No UI writes this yet — it is the storage groundwork for the planned
+     * golden/estate-keycard settings screen.
+     */
+    private int pulseLength = -1;
 
     public CardReaderBlockEntity(BlockPos pos, BlockState state) {
         super(DKBlockEntities.CARD_READER.get(), pos, state);
@@ -74,6 +81,26 @@ public class CardReaderBlockEntity extends BlockEntity {
 
     public void setResetPending(boolean resetPending) {
         this.resetPending = resetPending;
+    }
+
+    /** The accept-pulse length in ticks: this reader's override, else the config default. */
+    public int getPulseLength() {
+        return pulseLength >= 0 ? pulseLength : DKConfig.DEFAULT_PULSE_LENGTH_TICKS.get();
+    }
+
+    public boolean hasPulseOverride() {
+        return pulseLength >= 0;
+    }
+
+    public void setPulseLength(int ticks) {
+        this.pulseLength = ticks;
+        this.syncToClient();
+    }
+
+    /** Back to the config default. */
+    public void clearPulseLength() {
+        this.pulseLength = -1;
+        this.syncToClient();
     }
 
     public boolean isRegistered(UUID cardId) {
@@ -148,6 +175,9 @@ public class CardReaderBlockEntity extends BlockEntity {
         }
         tag.put("Blocked", blocked);
         tag.putBoolean("RegisterMode", registerMode);
+        if (pulseLength >= 0) {
+            tag.putInt("PulseLength", pulseLength);
+        }
     }
 
     @Override
@@ -163,6 +193,7 @@ public class CardReaderBlockEntity extends BlockEntity {
             blockedCards.add(NbtUtils.loadUUID(card));
         }
         registerMode = tag.getBoolean("RegisterMode");
+        pulseLength = tag.contains("PulseLength") ? tag.getInt("PulseLength") : -1;
     }
 
     @Override

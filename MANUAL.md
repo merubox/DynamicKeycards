@@ -2,7 +2,7 @@
 
 [한국어 버전 (Korean version)](MANUAL_KO.md)
 
-For version 0.1.1. Every interaction is a **right-click**; "sneak" means holding Shift.
+For version 0.1.2. Every interaction is a **right-click**; "sneak" means holding Shift.
 
 ---
 
@@ -64,8 +64,9 @@ status lights differ. Placeable on floors, walls, and ceilings.
 ### Basics
 - A reader **binds to the player who places it** (= the owner).
 - Once the owner **registers** a card, that card operates the reader.
-- Using a registered card (standing) emits a **3-second redstone pulse**
-  (signal strength 15, strongly powering the mounting face).
+- Using a registered card (standing) emits a **redstone pulse** (signal strength 15,
+  strongly powering the mounting face). The default length is 3 seconds, configurable
+  via `defaultPulseLengthTicks` (see §7).
 - One card can be registered on many readers, and one reader can hold many cards.
 - Forked cards are managed **individually**: removing one card's registration only
   stops that card — related copies keep working.
@@ -78,7 +79,7 @@ status lights differ. Placeable on floors, walls, and ceilings.
 | Light | Meaning |
 |---|---|
 | Off | Idle |
-| Solid green | Accepted (pulse running, 3s) |
+| Solid green | Accepted (pulse running) |
 | Solid red | Denied (1s) |
 | Blinking register display | Register mode armed (the Advanced type shows its blue screen with blinking LEDs) |
 
@@ -236,3 +237,18 @@ arrow, and the result on the right. Any reader and the duplicator are registered
 recipes (and back, via recipe-tree lookups on the cards).
 
 > EMI is optional — this only appears when EMI is installed.
+
+---
+
+## 7. Config & commands
+
+**Config** (`config/dynamickeycards-common.toml`):
+- `maxRegistrationsPerReader` (default 128) — per-reader registration cap.
+- `defaultPulseLengthTicks` (default 60 = 3 seconds) — the accept-pulse length used by
+  every reader. Per-reader pulse lengths are planned for a future settings UI; until
+  then this single default applies to all readers.
+
+**Command:**
+- `/dynamickeycards transfer <player>` — while looking at one of your readers, hands
+  its ownership to another player. Registrations are kept; only the owner changes.
+  Operators (permission level 2) can transfer any reader.
