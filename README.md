@@ -16,8 +16,10 @@ the right card.
 
 On top of that:
 
-- **Four reader variants** — Insert, Touch, Swipe, Advanced. Identical behavior,
-  different looks, four visual states each (idle / accepted / denied / register mode).
+- **Five reader variants** — Insert, Touch, Swipe, Advanced, Obsidian. Identical
+  behavior, different looks, four visual states each (idle / accepted / denied /
+  register mode). The Obsidian reader has a pricier recipe and mines as slowly as
+  obsidian itself.
 - **Fork duplication** — the Card Duplicator copies a card onto a blank one. The copy
   inherits everything the source could open *at that moment*; afterwards the two are
   completely independent cards. No remote kill-switches, no orphan-key bookkeeping.
@@ -45,6 +47,7 @@ On top of that:
 |---|---|
 | **EMI** | The machine processes as recipe categories: Card Registering (blank/keycard → keycard, per color) and Card Duplicating (fork / issue member / co-manager, per color), shown as a left-to-right process with the machine as a hoverable catalyst. |
 | **Jade** | Readers show their owner and register-mode state; duplicators show whether a copy is pending. |
+| **Create** | Standing + wrench right-click on a reader opens **Broadcast Mode**: two frequency slots let the reader's accept pulse transmit wirelessly over a Redstone Link network. Sneak + wrench lets the reader's owner pick it up straight into their inventory, on any reader. |
 
 Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, Nederlands, 中文(简体).
 
@@ -70,6 +73,7 @@ Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, 
 | 0.1.0 | New blank card recipe |
 | 0.1.1 | Estate Keycard (owner-scoped master key) |
 | 0.1.2 | Configurable pulse length, reader ownership transfer command |
+| 0.1.3 | Obsidian Card Reader, Create integration (Broadcast Mode + wrench pickup), renewed card textures |
 
 ## Requirements
 

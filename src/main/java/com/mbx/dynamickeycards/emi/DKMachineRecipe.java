@@ -11,7 +11,7 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.List;
 
 /**
- * A machine "recipe" for EMI that mimics Create's process display: one or two input
+ * A machine "recipe" for EMI laid out as a left-to-right process: one or two input
  * slots on the left, the machine block shown as a catalyst in the middle (hover it for
  * its name), an arrow, and the produced card on the right. These aren't real crafting
  * recipes — they document what registering/duplicating a card produces.

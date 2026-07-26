@@ -7,9 +7,9 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 
 /**
- * Create-style tooltips: a dark gray "Hold [Shift] for Summary" hint line (key name in
- * gray) that expands to gray summary lines while Shift is held. Only ever called from
- * item tooltip rendering, so the client-only {@link Screen} reference is safe.
+ * A dark gray "Hold [Shift] for Summary" hint line (key name in gray) that expands to
+ * gray summary lines while Shift is held. Only ever called from item tooltip rendering,
+ * so the client-only {@link Screen} reference is safe.
  */
 public class DKTooltips {
 

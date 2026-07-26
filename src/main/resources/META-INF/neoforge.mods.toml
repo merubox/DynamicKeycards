@@ -39,3 +39,13 @@ authors="mailbox"
     versionRange="[0,)"
     ordering="AFTER"
     side="BOTH"
+
+# Create: card reader broadcast mode (wrench UI + Redstone Link transmission) is only
+# active when Create is present. All references to Create's classes are guarded by
+# ModList.isLoaded("create") in compat/create/.
+[[dependencies.dynamickeycards]]
+    modId="create"
+    type="optional"
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="BOTH"

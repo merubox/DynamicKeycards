@@ -3,7 +3,7 @@ plugins {
     id 'net.neoforged.moddev' version '2.0.78'
 }
 
-version = '0.1.2'
+version = '0.1.3'
 group = 'com.mbx'
 base { archivesName = 'DynamicKeycards' }
 
@@ -16,6 +16,15 @@ repositories {
         url = 'https://api.modrinth.com/maven'
         content { includeGroup 'maven.modrinth' }
     }
+    // Create's own maven: Create's Modrinth jar does NOT contain its "Ponder" submodule as
+    // top-level classes — Ponder (and the Catnip library it carries, e.g. Couple/Frequency
+    // support types used by IRedstoneLinkable) is jar-in-jar'd inside Create's published jar,
+    // which the compile classpath can't see. Create's own maven hosts it separately.
+    maven {
+        name = 'CreateMod'
+        url = 'https://maven.createmod.net'
+        content { includeGroup 'net.createmod.ponder' }
+    }
 }
 
 dependencies {
@@ -25,6 +34,14 @@ dependencies {
     // Jade compat: compile against the API only. Jade is an optional runtime dependency;
     // the @WailaPlugin class is loaded by Jade solely when Jade is installed.
     compileOnly 'maven.modrinth:jade:15.10.5+neoforge'
+    // Create compat (Redstone Link broadcast mode): compile against Create's API only.
+    // Create is an optional runtime dependency; every reference to its classes is guarded
+    // at runtime by ModList.isLoaded("create") in compat/create/, unlike EMI/Jade this mod
+    // calls INTO Create's API proactively rather than being discovered by it.
+    compileOnly 'maven.modrinth:create:6.0.10+mc1.21.1'
+    // Ponder/Catnip, compile-only: see the repository comment above — needed only to resolve
+    // net.createmod.catnip.data.Couple, referenced by Create's IRedstoneLinkable interface.
+    compileOnly 'net.createmod.ponder:ponder-neoforge:1.0.82+mc1.21.1'
 }
 
 neoForge {
