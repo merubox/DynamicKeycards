@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "I": {
+      "tag": "c:ingots/gold"
+    },
+    "H": {
+      "item": "minecraft:hopper"
+    },
+    "R": {
+      "tag": "c:dusts/redstone"
+    },
+    "L": {
+      "item": "minecraft:redstone_lamp"
+    },
+    "O": {
+      "item": "minecraft:obsidian"
+    }
+  },
+  "pattern": [
+    "IHI",
+    "RLR",
+    "OOO"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dynamickeycards:obsidian_card_reader"
+  },
+  "show_notification": true
+}

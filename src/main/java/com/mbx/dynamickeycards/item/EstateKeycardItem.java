@@ -49,8 +49,8 @@ public class EstateKeycardItem extends KeycardItem {
             return InteractionResultHolder.sidedSuccess(stack, true);
         }
         if (boundOwner(stack) != null) {
-            // already bound — nothing to do; just confirm its state
-            message(player, "already_bound", ChatFormatting.WHITE);
+            // already bound — the foil (isFoil) already shows this visually, so this
+            // right-click is a silent no-op rather than repeating it as an actionbar message
             return InteractionResultHolder.sidedSuccess(stack, false);
         }
         Long deadline = stack.get(DKComponents.ACTIVATION_DEADLINE.get());

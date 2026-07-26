@@ -18,7 +18,8 @@ public class DKBlockEntities {
                     DKBlocks.INSERT_CARD_READER.get(),
                     DKBlocks.TOUCH_CARD_READER.get(),
                     DKBlocks.SWIPE_CARD_READER.get(),
-                    DKBlocks.ADVANCED_CARD_READER.get()).build(null));
+                    DKBlocks.ADVANCED_CARD_READER.get(),
+                    DKBlocks.OBSIDIAN_CARD_READER.get()).build(null));
 
     public static final Supplier<BlockEntityType<CardDuplicatorBlockEntity>> CARD_DUPLICATOR =
             BLOCK_ENTITIES.register("card_duplicator", () -> BlockEntityType.Builder.of(CardDuplicatorBlockEntity::new,

@@ -1,6 +1,7 @@
 package com.mbx.dynamickeycards.emi;
 
 import com.mbx.dynamickeycards.DynamicKeycards;
+import com.mbx.dynamickeycards.menu.BroadcastModeScreen;
 import com.mbx.dynamickeycards.registry.DKBlocks;
 import com.mbx.dynamickeycards.registry.DKItems;
 import dev.emi.emi.api.EmiEntrypoint;
@@ -9,6 +10,7 @@ import dev.emi.emi.api.EmiRegistry;
 import dev.emi.emi.api.recipe.EmiRecipeCategory;
 import dev.emi.emi.api.stack.EmiIngredient;
 import dev.emi.emi.api.stack.EmiStack;
+import dev.emi.emi.api.widget.Bounds;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.registries.DeferredItem;
 
@@ -38,6 +40,14 @@ public class DKEmiPlugin implements EmiPlugin {
 
     @Override
     public void register(EmiRegistry registry) {
+        // otherwise EMI's item panel draws its stacks right over the broadcast-mode screen's
+        // device icon (which sits outside the screen's own background rectangle, next to the
+        // arrow)
+        registry.addExclusionArea(BroadcastModeScreen.class, (screen, consumer) -> {
+            int[] bounds = screen.getDeviceIconScreenBounds();
+            consumer.accept(new Bounds(bounds[0], bounds[1], bounds[2], bounds[3]));
+        });
+
         registry.addCategory(REGISTERING);
         registry.addCategory(DUPLICATING);
 
@@ -45,7 +55,8 @@ public class DKEmiPlugin implements EmiPlugin {
                 EmiStack.of(DKBlocks.INSERT_CARD_READER.get()),
                 EmiStack.of(DKBlocks.TOUCH_CARD_READER.get()),
                 EmiStack.of(DKBlocks.SWIPE_CARD_READER.get()),
-                EmiStack.of(DKBlocks.ADVANCED_CARD_READER.get())));
+                EmiStack.of(DKBlocks.ADVANCED_CARD_READER.get()),
+                EmiStack.of(DKBlocks.OBSIDIAN_CARD_READER.get())));
         EmiStack duplicator = EmiStack.of(DKBlocks.CARD_DUPLICATOR.get());
 
         // any reader / the duplicator can be used to view their categories

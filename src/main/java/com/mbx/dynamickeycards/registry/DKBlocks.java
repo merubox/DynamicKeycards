@@ -22,6 +22,9 @@ public class DKBlocks {
     public static final DeferredBlock<Block> TOUCH_CARD_READER = registerReader("touch_card_reader");
     public static final DeferredBlock<Block> SWIPE_CARD_READER = registerReader("swipe_card_reader");
     public static final DeferredBlock<Block> ADVANCED_CARD_READER = registerReader("advanced_card_reader");
+    /** Pricier recipe (gold, a hopper, a redstone lamp, obsidian); mines as slowly as obsidian itself. */
+    public static final DeferredBlock<Block> OBSIDIAN_CARD_READER = register("obsidian_card_reader",
+            () -> new CardReaderBlock(obsidianProps()));
 
     public static final DeferredBlock<Block> CARD_DUPLICATOR = register("card_duplicator", () -> new CardDuplicatorBlock(props()));
 
@@ -37,5 +40,11 @@ public class DKBlocks {
 
     private static BlockBehaviour.Properties props() {
         return BlockBehaviour.Properties.of().noOcclusion().strength(0.5f).sound(SoundType.METAL);
+    }
+
+    /** Same hardness/resistance as vanilla obsidian; needs the same tool tier as obsidian too. */
+    private static BlockBehaviour.Properties obsidianProps() {
+        return BlockBehaviour.Properties.of().noOcclusion().strength(50.0f, 1200.0f)
+                .sound(SoundType.METAL).requiresCorrectToolForDrops();
     }
 }

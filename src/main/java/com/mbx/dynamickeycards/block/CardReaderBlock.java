@@ -4,11 +4,13 @@ import com.mojang.serialization.MapCodec;
 import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.DKTooltips;
 import com.mbx.dynamickeycards.DKConfig;
+import com.mbx.dynamickeycards.compat.create.CreateLinkCompat;
 import com.mbx.dynamickeycards.item.BlankKeycardItem;
 import com.mbx.dynamickeycards.item.CrewMemberKeycardItem;
 import com.mbx.dynamickeycards.item.EstateKeycardItem;
 import com.mbx.dynamickeycards.item.GoldenKeycardItem;
 import com.mbx.dynamickeycards.item.KeycardItem;
+import com.mbx.dynamickeycards.menu.BroadcastModeMenu;
 import com.mbx.dynamickeycards.registry.DKComponents;
 import com.mbx.dynamickeycards.registry.DKItems;
 import net.minecraft.ChatFormatting;
@@ -16,12 +18,15 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -44,6 +49,7 @@ import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.neoforge.common.Tags;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -157,6 +163,25 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
                                               Player player, InteractionHand hand, BlockHitResult hit) {
         if (stack.isEmpty()) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+        // Create wrench: regardless of item type below. Only reacts when Create is loaded —
+        // without it there is no Redstone Link network for this to broadcast to, so a wrench
+        // should behave as if we don't exist.
+        if (CreateLinkCompat.isLoaded() && stack.is(Tags.Items.TOOLS_WRENCH)) {
+            if (!(level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader)) {
+                return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+            }
+            if (player.isShiftKeyDown()) {
+                return wrenchSneakInteract(state, level, pos, player, reader);
+            }
+            // standing: open broadcast mode
+            if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+                MenuProvider provider = new SimpleMenuProvider(
+                        (containerId, playerInventory, opener) -> new BroadcastModeMenu(containerId, playerInventory, reader),
+                        state.getBlock().getName());
+                serverPlayer.openMenu(provider, buf -> buf.writeBlockPos(pos));
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
         if (player.isSpectator() || !(stack.getItem() instanceof KeycardItem)
                 || !(level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader)) {
@@ -313,16 +338,44 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         return ItemInteractionResult.sidedSuccess(level.isClientSide);
     }
 
+    /**
+     * Sneak + Create wrench: for the reader's owner, the block moves straight into their
+     * inventory instead of being broken and dropped. A non-owner gets the same "not_bound"
+     * response as a sneak-click with a bare hand.
+     */
+    private ItemInteractionResult wrenchSneakInteract(BlockState state, Level level, BlockPos pos,
+                                                       Player player, CardReaderBlockEntity reader) {
+        if (!reader.isOwner(player)) {
+            if (!level.isClientSide) {
+                message(player, "not_bound", ChatFormatting.RED);
+                DKSounds.deny(level, pos);
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+        if (!level.isClientSide) {
+            ItemStack pickedUp = new ItemStack(state.getBlock());
+            if (!player.getInventory().add(pickedUp)) {
+                player.drop(pickedUp, false);
+            }
+            level.levelEvent(null, 2001, pos, Block.getId(state));
+            level.removeBlock(pos, false);
+        }
+        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+    }
+
     private void acceptPulse(BlockState state, Level level, BlockPos pos, Player player) {
-        int pulseTicks = level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader
-                ? reader.getPulseLength()
-                : DKConfig.DEFAULT_PULSE_LENGTH_TICKS.get();
+        CardReaderBlockEntity reader = level.getBlockEntity(pos) instanceof CardReaderBlockEntity r ? r : null;
+        int pulseTicks = reader != null ? reader.getPulseLength() : DKConfig.DEFAULT_PULSE_LENGTH_TICKS.get();
         level.setBlock(pos, state.setValue(MODE, CardReaderMode.ACCEPTED).setValue(PRESSED, true), Block.UPDATE_ALL);
         this.updateNeighbors(state, level, pos);
         level.scheduleTick(pos, this, pulseTicks);
         level.playSound(player, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3f, 0.6f);
         if (!level.isClientSide) {
             DKSounds.accept(level, pos);
+        }
+        if (reader != null) {
+            // mirrors the physical redstone pulse onto Create's Redstone Link network, if any
+            reader.notifyBroadcastChanged();
         }
         level.gameEvent(player, GameEvent.BLOCK_ACTIVATE, pos);
     }
@@ -349,6 +402,9 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
                 this.updateNeighbors(state, level, pos);
                 level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_OFF, SoundSource.BLOCKS, 0.3f, 0.5f);
                 level.gameEvent(null, GameEvent.BLOCK_DEACTIVATE, pos);
+                if (level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader) {
+                    reader.notifyBroadcastChanged();
+                }
             }
             case DENIED -> setMode(level, pos, state, CardReaderMode.OFF);
             default -> { }
@@ -439,6 +495,6 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
 
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, java.util.List<Component> tooltip, TooltipFlag flag) {
-        DKTooltips.summary(tooltip, "card_reader1", "card_reader2", "card_reader3");
+        DKTooltips.summary(tooltip, "card_reader1", "card_reader2", "card_reader3", "card_reader_wrench_pickup");
     }
 }

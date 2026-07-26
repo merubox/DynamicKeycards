@@ -4,6 +4,26 @@
 
 All notable changes to Dynamic Keycards are documented here.
 
+## 0.1.3
+
+### Added
+- **Obsidian Card Reader** — a fifth reader variant. Recipe: gold ingot – hopper –
+  gold ingot / redstone – redstone lamp – redstone / obsidian ×3. Mines as slowly as
+  a vanilla obsidian block (same hardness, blast resistance, and diamond-pickaxe
+  requirement).
+- **Create integration** (optional): a reader now responds to Create's wrench.
+  Standing + wrench opens **Broadcast Mode** — two ghost frequency slots that let
+  the reader's accept pulse transmit wirelessly over a Redstone Link network.
+  Sneak + wrench lets the reader's owner pick it up straight into their inventory
+  instead of breaking it normally, on any reader — mirrors Create's own wrenchable
+  machines, down to reusing the block's own break sound and particles. Both are
+  no-ops without Create installed.
+- Renewed all card item textures (blank, keycard, manager, member, golden).
+
+### Fixed
+- Estate Keycard: removed the redundant "already registered to an owner" action-bar
+  message on re-click — the foil effect already shows registration status.
+
 ## 0.1.2
 
 ### Added

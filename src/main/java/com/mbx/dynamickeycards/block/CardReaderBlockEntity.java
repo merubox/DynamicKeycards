@@ -1,6 +1,7 @@
 package com.mbx.dynamickeycards.block;
 
 import com.mbx.dynamickeycards.DKConfig;
+import com.mbx.dynamickeycards.compat.create.CreateLinkCompat;
 import com.mbx.dynamickeycards.registry.DKBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -12,6 +13,7 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -41,6 +43,17 @@ public class CardReaderBlockEntity extends BlockEntity {
      * golden/estate-keycard settings screen.
      */
     private int pulseLength = -1;
+
+    /**
+     * Create Redstone Link broadcast mode (only meaningful when Create is installed): the two
+     * ghost frequency slots, and the opaque {@link CreateLinkCompat} adapter registered against
+     * Create's network while this reader is loaded. Both stay empty/{@code null} without Create.
+     */
+    private final ItemStack[] frequencySlots = {ItemStack.EMPTY, ItemStack.EMPTY};
+    /** Normal mode (false) vs broadcast mode (true) — set from the wrench UI's two mode buttons. */
+    private boolean broadcastEnabled;
+    @Nullable
+    private Object createLinkAdapter;
 
     public CardReaderBlockEntity(BlockPos pos, BlockState state) {
         super(DKBlockEntities.CARD_READER.get(), pos, state);
@@ -101,6 +114,88 @@ public class CardReaderBlockEntity extends BlockEntity {
     public void clearPulseLength() {
         this.pulseLength = -1;
         this.syncToClient();
+    }
+
+    /** Ghost frequency slot {@code index} (0 or 1) for Create's Redstone Link broadcast. */
+    public ItemStack getFrequencySlot(int index) {
+        return frequencySlots[index];
+    }
+
+    /**
+     * Sets ghost frequency slot {@code index}; the stack is never actually consumed by this
+     * (see {@code menu.BroadcastModeMenu}), only remembered as a count-1 copy — stack count
+     * doesn't matter for frequency matching.
+     */
+    public void setFrequencySlot(int index, ItemStack stack) {
+        frequencySlots[index] = stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1);
+        reregisterBroadcast();
+        this.syncToClient();
+    }
+
+    public boolean isBroadcastEnabled() {
+        return broadcastEnabled;
+    }
+
+    /** Toggled by the wrench UI's normal-mode/broadcast-mode buttons. */
+    public void setBroadcastEnabled(boolean broadcastEnabled) {
+        this.broadcastEnabled = broadcastEnabled;
+        if (broadcastEnabled) {
+            registerBroadcast();
+        } else {
+            unregisterBroadcast();
+        }
+        this.syncToClient();
+    }
+
+    /** Re-announces this reader to Create's Redstone Link network under its current frequency. */
+    private void reregisterBroadcast() {
+        if (createLinkAdapter != null && level != null) {
+            CreateLinkCompat.unregister(level, createLinkAdapter);
+            CreateLinkCompat.register(level, createLinkAdapter);
+        }
+    }
+
+    private void registerBroadcast() {
+        if (level == null || level.isClientSide || !CreateLinkCompat.isLoaded()) {
+            return;
+        }
+        if (createLinkAdapter == null) {
+            createLinkAdapter = CreateLinkCompat.createAdapter(this);
+        }
+        CreateLinkCompat.register(level, createLinkAdapter);
+    }
+
+    private void unregisterBroadcast() {
+        if (createLinkAdapter != null && level != null) {
+            CreateLinkCompat.unregister(level, createLinkAdapter);
+        }
+    }
+
+    /**
+     * Tells Create's Redstone Link network to re-poll this reader's transmitted strength.
+     * Called by {@link CardReaderBlock} right after the accept pulse starts and right after it
+     * ends, so the broadcast strength (15 while accepted, else 0) tracks the physical pulse.
+     * A no-op unless Create is installed and this reader is currently registered.
+     */
+    public void notifyBroadcastChanged() {
+        if (createLinkAdapter != null && level != null) {
+            CreateLinkCompat.notifyChanged(level, createLinkAdapter);
+        }
+    }
+
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        if (broadcastEnabled) {
+            registerBroadcast();
+        }
+    }
+
+    @Override
+    public void setRemoved() {
+        super.setRemoved();
+        unregisterBroadcast();
+        createLinkAdapter = null;
     }
 
     public boolean isRegistered(UUID cardId) {
@@ -178,6 +273,13 @@ public class CardReaderBlockEntity extends BlockEntity {
         if (pulseLength >= 0) {
             tag.putInt("PulseLength", pulseLength);
         }
+        if (!frequencySlots[0].isEmpty()) {
+            tag.put("FrequencySlot0", frequencySlots[0].save(registries));
+        }
+        if (!frequencySlots[1].isEmpty()) {
+            tag.put("FrequencySlot1", frequencySlots[1].save(registries));
+        }
+        tag.putBoolean("BroadcastEnabled", broadcastEnabled);
     }
 
     @Override
@@ -194,6 +296,11 @@ public class CardReaderBlockEntity extends BlockEntity {
         }
         registerMode = tag.getBoolean("RegisterMode");
         pulseLength = tag.contains("PulseLength") ? tag.getInt("PulseLength") : -1;
+        frequencySlots[0] = tag.contains("FrequencySlot0")
+                ? ItemStack.parseOptional(registries, tag.getCompound("FrequencySlot0")) : ItemStack.EMPTY;
+        frequencySlots[1] = tag.contains("FrequencySlot1")
+                ? ItemStack.parseOptional(registries, tag.getCompound("FrequencySlot1")) : ItemStack.EMPTY;
+        broadcastEnabled = tag.getBoolean("BroadcastEnabled");
     }
 
     @Override

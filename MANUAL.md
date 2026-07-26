@@ -2,7 +2,7 @@
 
 [한국어 버전 (Korean version)](MANUAL_KO.md)
 
-For version 0.1.2. Every interaction is a **right-click**; "sneak" means holding Shift.
+For version 0.1.3. Every interaction is a **right-click**; "sneak" means holding Shift.
 
 ---
 
@@ -56,10 +56,11 @@ All item types appear in the **Dynamic Keycards** creative tab. In survival, key
 
 ---
 
-## 2. Card Readers (4 variants)
+## 2. Card Readers (5 variants)
 
-**Insert · Touch · Swipe · Advanced** — all four behave identically; only the looks and
-status lights differ. Placeable on floors, walls, and ceilings.
+**Insert · Touch · Swipe · Advanced · Obsidian** — all five behave identically; only
+the looks, status lights, recipe cost, and (for Obsidian) mining time differ.
+Placeable on floors, walls, and ceilings.
 
 ### Basics
 - A reader **binds to the player who places it** (= the owner).
@@ -74,6 +75,8 @@ status lights differ. Placeable on floors, walls, and ceilings.
   (`maxRegistrationsPerReader` in `config/dynamickeycards-common.toml`, default 128);
   past the limit, register mode reports "Registration limit reached".
 - Breaking a reader erases its binding and registrations.
+- The **Obsidian** reader has the same hardness and blast resistance as a vanilla
+  obsidian block, and needs a diamond (or better) pickaxe.
 
 ### Status lights
 | Light | Meaning |
@@ -188,6 +191,9 @@ Middle and bottom rows are shared: **redstone – redstone lamp – redstone / i
 | Swipe | rail ×3 |
 | Advanced | amethyst shard ×3 |
 
+The **Obsidian** reader has its own recipe, independent of the shared pattern above:
+gold ingot – hopper – gold ingot / redstone – redstone lamp – redstone / obsidian ×3.
+
 ### Keycards
 - **White Blank Card**: dried kelp ×3 / gold nugget – redstone – paper / iron nugget ×3
 - **Dyeing**: any card + any dye (shapeless) → that color's **blank card** (key is wiped)
@@ -214,6 +220,16 @@ obsidian – redstone – obsidian / diamond – any blank card – gold ingot /
 - With **Jade** installed, looking at a reader shows its owner and whether register
   mode is armed, and looking at a duplicator shows whether a copy is pending
   (optional — no effect when Jade is absent).
+- With **Create** installed, a reader responds to its wrench:
+  - **Standing + wrench** opens **Broadcast Mode** — two ghost frequency slots
+    (like a Redstone Link transmitter) that let the reader's accept pulse transmit
+    wirelessly over a Redstone Link network, in addition to the physical pulse at
+    the reader itself.
+  - **Sneak + wrench**, for the reader's owner only, picks the reader straight into
+    their inventory instead of breaking it normally — the same instant-pickup
+    behavior Create's own wrenchable machines have. A non-owner gets the usual
+    "not bound to you" response.
+  - Optional — a reader behaves as it always has when Create isn't installed.
 
 ---
 
