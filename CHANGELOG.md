@@ -4,6 +4,22 @@
 
 All notable changes to Dynamic Keycards are documented here.
 
+## 0.1.4
+
+### Added
+- **Pulse length adjustment** — the Link Mode screen's number display now shows
+  the reader's current pulse length. Hold right-click on it to open an adjustment
+  scale (ticks / seconds / minutes, milestone marks every 10 units); move the
+  mouse or scroll to pick a value, release right-click to confirm. The trash-icon
+  button now also resets the pulse length back to the config default alongside
+  the frequency slots.
+
+### Changed
+- Renamed "Broadcast Mode" to **Link Mode**.
+- Sneak + wrench pickup now asks for confirmation (red warning) before actually picking
+  up the reader — the same two-step shape as the golden-keycard full reset, instead of
+  picking it up on the very first click.
+
 ## 0.1.3
 
 ### Added
@@ -12,12 +28,11 @@ All notable changes to Dynamic Keycards are documented here.
   a vanilla obsidian block (same hardness, blast resistance, and diamond-pickaxe
   requirement).
 - **Create integration** (optional): a reader now responds to Create's wrench.
-  Standing + wrench opens **Broadcast Mode** — two ghost frequency slots that let
+  Standing + wrench opens **Link Mode** — two ghost frequency slots that let
   the reader's accept pulse transmit wirelessly over a Redstone Link network.
   Sneak + wrench lets the reader's owner pick it up straight into their inventory
-  instead of breaking it normally, on any reader — mirrors Create's own wrenchable
-  machines, down to reusing the block's own break sound and particles. Both are
-  no-ops without Create installed.
+  instead of breaking it normally, on any reader — reusing the block's own break
+  sound and particles for the pickup. Both are no-ops without Create installed.
 - Renewed all card item textures (blank, keycard, manager, member, golden).
 
 ### Fixed

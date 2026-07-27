@@ -4,6 +4,8 @@ import com.mbx.dynamickeycards.block.CardReaderBlockEntity;
 import com.mbx.dynamickeycards.registry.DKMenuTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -15,15 +17,15 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 /**
- * Card reader "broadcast mode": two ghost frequency slots (indices 0 and 1), used as a
- * Redstone Link network key and backed by {@link CardReaderBlockEntity#getFrequencySlot}.
- * Slots 2-37 are the player's own inventory (3x9 + hotbar), same layout vanilla containers
- * use.
+ * Card reader's wrench-opened config UI: two ghost frequency slots (indices 0 and 1), used as
+ * a Redstone Link network key and backed by {@link CardReaderBlockEntity#getFrequencySlot},
+ * plus the mode toggle / reset / pulse-length controls. Slots 2-37 are the player's own
+ * inventory (3x9 + hotbar), same layout vanilla containers use.
  *
- * <p>Slot/button coordinates match {@code BroadcastModeScreen} and its 184x99 background
+ * <p>Slot/button coordinates match {@code CardReaderConfigScreen} and its 184x99 background
  * canvas.
  */
-public class BroadcastModeMenu extends AbstractContainerMenu {
+public class CardReaderConfigMenu extends AbstractContainerMenu {
 
     public static final int GHOST_SLOT_COUNT = 2;
 
@@ -31,10 +33,17 @@ public class BroadcastModeMenu extends AbstractContainerMenu {
     public static final int BUTTON_NORMAL_MODE = 0;
     public static final int BUTTON_BROADCAST_MODE = 1;
     public static final int BUTTON_RESET = 2;
+    /**
+     * Pulse length values (in ticks) are sent as {@code PULSE_LENGTH_ID_BASE + ticks} —
+     * an ordinary {@code int} id, same mechanism as the other buttons, just offset high
+     * enough (max tick count is 72000, see {@code DKConfig}) that it can never collide with
+     * the small fixed ids above.
+     */
+    public static final int PULSE_LENGTH_ID_BASE = 10_000;
 
     private final CardReaderBlockEntity reader;
 
-    public BroadcastModeMenu(int containerId, Inventory playerInventory, CardReaderBlockEntity reader) {
+    public CardReaderConfigMenu(int containerId, Inventory playerInventory, CardReaderBlockEntity reader) {
         super(DKMenuTypes.BROADCAST_MODE.get(), containerId);
         this.reader = reader;
 
@@ -63,7 +72,7 @@ public class BroadcastModeMenu extends AbstractContainerMenu {
             }
         });
 
-        // matches BroadcastModeScreen's player-inventory panel: panel sits flush at local
+        // matches CardReaderConfigScreen's player-inventory panel: panel sits flush at local
         // x=0 with the main panel, slots are +8/+18 into it from there
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
@@ -86,12 +95,22 @@ public class BroadcastModeMenu extends AbstractContainerMenu {
      */
     @Override
     public boolean clickMenuButton(Player player, int id) {
+        if (id >= PULSE_LENGTH_ID_BASE) {
+            // same [1, 72000] range as DKConfig.DEFAULT_PULSE_LENGTH_TICKS
+            int ticks = Math.clamp(id - PULSE_LENGTH_ID_BASE, 1, 72000);
+            if (ticks != reader.getPulseLength()) {
+                reader.setPulseLength(ticks);
+                playPulseConfirmSound();
+            }
+            return true;
+        }
         switch (id) {
             case BUTTON_NORMAL_MODE -> reader.setBroadcastEnabled(false);
             case BUTTON_BROADCAST_MODE -> reader.setBroadcastEnabled(true);
             case BUTTON_RESET -> {
                 reader.setFrequencySlot(0, ItemStack.EMPTY);
                 reader.setFrequencySlot(1, ItemStack.EMPTY);
+                reader.clearPulseLength();
             }
             default -> {
                 return false;
@@ -100,13 +119,27 @@ public class BroadcastModeMenu extends AbstractContainerMenu {
         return true;
     }
 
-    public static BroadcastModeMenu fromNetwork(int containerId, Inventory playerInventory, RegistryFriendlyByteBuf extraData) {
+    /**
+     * Two plain vanilla sounds (not one of this mod's own {@code DKSounds} tones) layered
+     * quietly on top of each other - a sharp high click plus a very faint xylophone note.
+     * Deliberately not folded into {@code DKSounds}: that class documents this mod's own
+     * five-tone feedback vocabulary, and this pairing exists only to match what players
+     * already hear from value-adjustment scales elsewhere, independent of that vocabulary.
+     */
+    private void playPulseConfirmSound() {
+        Level level = reader.getLevel();
+        BlockPos pos = reader.getBlockPos();
+        level.playSound(null, pos, SoundEvents.ITEM_FRAME_ADD_ITEM, SoundSource.BLOCKS, 0.25f, 2f);
+        level.playSound(null, pos, SoundEvents.NOTE_BLOCK_IRON_XYLOPHONE.value(), SoundSource.BLOCKS, 0.03f, 1.125f);
+    }
+
+    public static CardReaderConfigMenu fromNetwork(int containerId, Inventory playerInventory, RegistryFriendlyByteBuf extraData) {
         BlockPos pos = extraData.readBlockPos();
         BlockEntity blockEntity = playerInventory.player.level().getBlockEntity(pos);
         if (!(blockEntity instanceof CardReaderBlockEntity reader)) {
             throw new IllegalStateException("No card reader at " + pos);
         }
-        return new BroadcastModeMenu(containerId, playerInventory, reader);
+        return new CardReaderConfigMenu(containerId, playerInventory, reader);
     }
 
     /**

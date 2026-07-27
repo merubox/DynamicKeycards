@@ -10,7 +10,8 @@ import com.mbx.dynamickeycards.item.CrewMemberKeycardItem;
 import com.mbx.dynamickeycards.item.EstateKeycardItem;
 import com.mbx.dynamickeycards.item.GoldenKeycardItem;
 import com.mbx.dynamickeycards.item.KeycardItem;
-import com.mbx.dynamickeycards.menu.BroadcastModeMenu;
+import com.mbx.dynamickeycards.menu.CardReaderConfigMenu;
+import com.mbx.dynamickeycards.registry.DKBlockEntities;
 import com.mbx.dynamickeycards.registry.DKComponents;
 import com.mbx.dynamickeycards.registry.DKItems;
 import net.minecraft.ChatFormatting;
@@ -38,6 +39,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -177,7 +180,7 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             // standing: open broadcast mode
             if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
                 MenuProvider provider = new SimpleMenuProvider(
-                        (containerId, playerInventory, opener) -> new BroadcastModeMenu(containerId, playerInventory, reader),
+                        (containerId, playerInventory, opener) -> new CardReaderConfigMenu(containerId, playerInventory, reader),
                         state.getBlock().getName());
                 serverPlayer.openMenu(provider, buf -> buf.writeBlockPos(pos));
             }
@@ -339,9 +342,10 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
     }
 
     /**
-     * Sneak + Create wrench: for the reader's owner, the block moves straight into their
-     * inventory instead of being broken and dropped. A non-owner gets the same "not_bound"
-     * response as a sneak-click with a bare hand.
+     * Sneak + Create wrench: for the reader's owner, a confirming second click moves the
+     * block straight into their inventory instead of breaking it normally — same two-step
+     * shape as the golden-keycard full reset, first click just warns. A non-owner gets the
+     * same "not_bound" response as a sneak-click with a bare hand.
      */
     private ItemInteractionResult wrenchSneakInteract(BlockState state, Level level, BlockPos pos,
                                                        Player player, CardReaderBlockEntity reader) {
@@ -353,6 +357,12 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
         if (!level.isClientSide) {
+            if (!reader.isWrenchPickupPending()) {
+                reader.setWrenchPickupPending(true);
+                message(player, "wrench_pickup_confirm", ChatFormatting.RED);
+                DKSounds.deny(level, pos);
+                return ItemInteractionResult.sidedSuccess(false);
+            }
             ItemStack pickedUp = new ItemStack(state.getBlock());
             if (!player.getInventory().add(pickedUp)) {
                 player.drop(pickedUp, false);
@@ -363,21 +373,57 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         return ItemInteractionResult.sidedSuccess(level.isClientSide);
     }
 
+    /**
+     * The accept pulse's own "turn off" no longer goes through {@link Level#scheduleTick} -
+     * a level only ever keeps one pending scheduled tick per (position, block) pair (it
+     * silently drops a second one, regardless of the delay), so re-scheduling a shorter tick
+     * after a mid-pulse length change was a no-op against the tick already queued when the
+     * pulse started. {@link #tickPulseTimeout} checks the elapsed time against the reader's
+     * current pulse length every game tick instead, so a length change takes effect on the
+     * very next tick, whichever direction it moves.
+     */
     private void acceptPulse(BlockState state, Level level, BlockPos pos, Player player) {
         CardReaderBlockEntity reader = level.getBlockEntity(pos) instanceof CardReaderBlockEntity r ? r : null;
-        int pulseTicks = reader != null ? reader.getPulseLength() : DKConfig.DEFAULT_PULSE_LENGTH_TICKS.get();
         level.setBlock(pos, state.setValue(MODE, CardReaderMode.ACCEPTED).setValue(PRESSED, true), Block.UPDATE_ALL);
         this.updateNeighbors(state, level, pos);
-        level.scheduleTick(pos, this, pulseTicks);
         level.playSound(player, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3f, 0.6f);
         if (!level.isClientSide) {
             DKSounds.accept(level, pos);
         }
         if (reader != null) {
+            reader.onPulseStarted();
             // mirrors the physical redstone pulse onto Create's Redstone Link network, if any
             reader.notifyBroadcastChanged();
         }
         level.gameEvent(player, GameEvent.BLOCK_ACTIVATE, pos);
+    }
+
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> blockEntityType) {
+        if (level.isClientSide || blockEntityType != DKBlockEntities.CARD_READER.get()) {
+            return null;
+        }
+        return (lvl, pos, st, be) -> {
+            if (be instanceof CardReaderBlockEntity reader) {
+                tickPulseTimeout(lvl, pos, st, reader);
+            }
+        };
+    }
+
+    /** Ends the accept pulse once the reader's current pulse length has actually elapsed. */
+    private void tickPulseTimeout(Level level, BlockPos pos, BlockState state, CardReaderBlockEntity reader) {
+        if (state.getValue(MODE) != CardReaderMode.ACCEPTED) {
+            return;
+        }
+        long elapsed = level.getGameTime() - reader.getPulseStartGameTime();
+        if (elapsed < reader.getPulseLength()) {
+            return;
+        }
+        level.setBlock(pos, state.setValue(MODE, CardReaderMode.OFF).setValue(PRESSED, false), Block.UPDATE_ALL);
+        this.updateNeighbors(state, level, pos);
+        level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_OFF, SoundSource.BLOCKS, 0.3f, 0.5f);
+        level.gameEvent(null, GameEvent.BLOCK_DEACTIVATE, pos);
+        reader.notifyBroadcastChanged();
     }
 
     private void armRegisterMode(Level level, BlockPos pos, BlockState state, CardReaderBlockEntity reader, Player player) {
@@ -394,20 +440,11 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         DKSounds.remove(level, pos);
     }
 
+    /** Only the DENIED flash still uses a plain scheduled tick - its duration never changes mid-flight. */
     @Override
     protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        switch (state.getValue(MODE)) {
-            case ACCEPTED -> {
-                level.setBlock(pos, state.setValue(MODE, CardReaderMode.OFF).setValue(PRESSED, false), Block.UPDATE_ALL);
-                this.updateNeighbors(state, level, pos);
-                level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_OFF, SoundSource.BLOCKS, 0.3f, 0.5f);
-                level.gameEvent(null, GameEvent.BLOCK_DEACTIVATE, pos);
-                if (level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader) {
-                    reader.notifyBroadcastChanged();
-                }
-            }
-            case DENIED -> setMode(level, pos, state, CardReaderMode.OFF);
-            default -> { }
+        if (state.getValue(MODE) == CardReaderMode.DENIED) {
+            setMode(level, pos, state, CardReaderMode.OFF);
         }
     }
 
