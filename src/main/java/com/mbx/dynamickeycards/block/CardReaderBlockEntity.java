@@ -38,11 +38,25 @@ public class CardReaderBlockEntity extends BlockEntity {
     private boolean registerMode;
     private boolean resetPending;
     /**
+     * Whether a sneak-wrench pickup is awaiting its confirming second click - same
+     * transient, unpersisted, no-timeout shape as {@link #resetPending}.
+     */
+    private boolean wrenchPickupPending;
+    /**
      * Per-reader accept-pulse override in ticks; {@code -1} means "use the config
-     * default". No UI writes this yet — it is the storage groundwork for the planned
-     * golden/estate-keycard settings screen.
+     * default".
      */
     private int pulseLength = -1;
+    /**
+     * Game time the current accept pulse began. {@link CardReaderBlock#tickPulseTimeout} checks
+     * this against the current pulse length every tick (rather than a one-shot scheduled tick,
+     * which a level only ever keeps one of per position — see that method's own comment) so a
+     * length change made mid-pulse takes effect immediately instead of only on the next press.
+     * {@code -1} while no pulse is running. Deliberately not persisted (like {@link #resetPending}):
+     * a stale value after a reload just means a length change can't retroactively shorten a pulse
+     * that predates the reload, which self-corrects the moment that pulse ends on its own.
+     */
+    private long pulseStartGameTime = -1;
 
     /**
      * Create Redstone Link broadcast mode (only meaningful when Create is installed): the two
@@ -96,6 +110,14 @@ public class CardReaderBlockEntity extends BlockEntity {
         this.resetPending = resetPending;
     }
 
+    public boolean isWrenchPickupPending() {
+        return wrenchPickupPending;
+    }
+
+    public void setWrenchPickupPending(boolean wrenchPickupPending) {
+        this.wrenchPickupPending = wrenchPickupPending;
+    }
+
     /** The accept-pulse length in ticks: this reader's override, else the config default. */
     public int getPulseLength() {
         return pulseLength >= 0 ? pulseLength : DKConfig.DEFAULT_PULSE_LENGTH_TICKS.get();
@@ -116,6 +138,18 @@ public class CardReaderBlockEntity extends BlockEntity {
         this.syncToClient();
     }
 
+    /** Called by {@link CardReaderBlock#acceptPulse} the moment a pulse begins. */
+    void onPulseStarted() {
+        if (level != null) {
+            pulseStartGameTime = level.getGameTime();
+        }
+    }
+
+    /** Game time {@link #onPulseStarted()} last ran; {@code -1} if no pulse has run yet. */
+    long getPulseStartGameTime() {
+        return pulseStartGameTime;
+    }
+
     /** Ghost frequency slot {@code index} (0 or 1) for Create's Redstone Link broadcast. */
     public ItemStack getFrequencySlot(int index) {
         return frequencySlots[index];
@@ -123,7 +157,7 @@ public class CardReaderBlockEntity extends BlockEntity {
 
     /**
      * Sets ghost frequency slot {@code index}; the stack is never actually consumed by this
-     * (see {@code menu.BroadcastModeMenu}), only remembered as a count-1 copy — stack count
+     * (see {@code menu.CardReaderConfigMenu}), only remembered as a count-1 copy — stack count
      * doesn't matter for frequency matching.
      */
     public void setFrequencySlot(int index, ItemStack stack) {

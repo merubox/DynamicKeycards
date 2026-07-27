@@ -221,14 +221,20 @@ obsidian – redstone – obsidian / diamond – any blank card – gold ingot /
   mode is armed, and looking at a duplicator shows whether a copy is pending
   (optional — no effect when Jade is absent).
 - With **Create** installed, a reader responds to its wrench:
-  - **Standing + wrench** opens **Broadcast Mode** — two ghost frequency slots
+  - **Standing + wrench** opens **Link Mode** — two ghost frequency slots
     (like a Redstone Link transmitter) that let the reader's accept pulse transmit
     wirelessly over a Redstone Link network, in addition to the physical pulse at
     the reader itself.
-  - **Sneak + wrench**, for the reader's owner only, picks the reader straight into
-    their inventory instead of breaking it normally — the same instant-pickup
-    behavior Create's own wrenchable machines have. A non-owner gets the usual
-    "not bound to you" response.
+  - The number display in that same screen shows the reader's current **pulse
+    length**. Hold right-click on it for a moment to open an adjustment scale —
+    three rows (ticks / seconds / minutes) with milestone marks every 10 units.
+    Move the mouse (or scroll) to pick a value, then release right-click to confirm it.
+  - The trash-icon button in Link Mode now clears the frequency slots *and* resets
+    the pulse length back to the config's default length in one click.
+  - **Sneak + wrench**, for the reader's owner only, asks for confirmation first (red
+    warning) — a second sneak + wrench click then picks the reader straight into their
+    inventory instead of breaking it normally, reusing the block's own break sound and
+    particles for the pickup. A non-owner gets the usual "not bound to you" response.
   - Optional — a reader behaves as it always has when Create isn't installed.
 
 ---

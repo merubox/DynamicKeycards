@@ -47,7 +47,7 @@ On top of that:
 |---|---|
 | **EMI** | The machine processes as recipe categories: Card Registering (blank/keycard → keycard, per color) and Card Duplicating (fork / issue member / co-manager, per color), shown as a left-to-right process with the machine as a hoverable catalyst. |
 | **Jade** | Readers show their owner and register-mode state; duplicators show whether a copy is pending. |
-| **Create** | Standing + wrench right-click on a reader opens **Broadcast Mode**: two frequency slots let the reader's accept pulse transmit wirelessly over a Redstone Link network. Sneak + wrench lets the reader's owner pick it up straight into their inventory, on any reader. |
+| **Create** | Standing + wrench right-click on a reader opens **Link Mode**: two frequency slots let the reader's accept pulse transmit wirelessly over a Redstone Link network, and a number display lets you dial in the reader's pulse length (holding right-click on it opens a tick/second/minute adjustment scale). Sneak + wrench lets the reader's owner pick it up straight into their inventory, on any reader. |
 
 Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, Nederlands, 中文(简体).
 
@@ -73,7 +73,7 @@ Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, 
 | 0.1.0 | New blank card recipe |
 | 0.1.1 | Estate Keycard (owner-scoped master key) |
 | 0.1.2 | Configurable pulse length, reader ownership transfer command |
-| 0.1.3 | Obsidian Card Reader, Create integration (Broadcast Mode + wrench pickup), renewed card textures |
+| 0.1.3 | Obsidian Card Reader, Create integration (Link Mode + wrench pickup), renewed card textures |
 
 ## Requirements
 

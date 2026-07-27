@@ -1,7 +1,7 @@
 package com.mbx.dynamickeycards.emi;
 
 import com.mbx.dynamickeycards.DynamicKeycards;
-import com.mbx.dynamickeycards.menu.BroadcastModeScreen;
+import com.mbx.dynamickeycards.menu.CardReaderConfigScreen;
 import com.mbx.dynamickeycards.registry.DKBlocks;
 import com.mbx.dynamickeycards.registry.DKItems;
 import dev.emi.emi.api.EmiEntrypoint;
@@ -40,12 +40,17 @@ public class DKEmiPlugin implements EmiPlugin {
 
     @Override
     public void register(EmiRegistry registry) {
-        // otherwise EMI's item panel draws its stacks right over the broadcast-mode screen's
-        // device icon (which sits outside the screen's own background rectangle, next to the
-        // arrow)
-        registry.addExclusionArea(BroadcastModeScreen.class, (screen, consumer) -> {
+        // otherwise EMI's item panel draws its stacks right over the config screen's device
+        // icon (which sits outside the screen's own background rectangle, next to the arrow)
+        // - and, while the pulse length popup is open, over that full-screen overlay too
+        registry.addExclusionArea(CardReaderConfigScreen.class, (screen, consumer) -> {
             int[] bounds = screen.getDeviceIconScreenBounds();
             consumer.accept(new Bounds(bounds[0], bounds[1], bounds[2], bounds[3]));
+
+            int[] popupBounds = screen.getPulseLengthPopupScreenBounds();
+            if (popupBounds != null) {
+                consumer.accept(new Bounds(popupBounds[0], popupBounds[1], popupBounds[2], popupBounds[3]));
+            }
         });
 
         registry.addCategory(REGISTERING);

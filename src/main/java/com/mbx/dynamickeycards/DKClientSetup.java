@@ -1,6 +1,6 @@
 package com.mbx.dynamickeycards;
 
-import com.mbx.dynamickeycards.menu.BroadcastModeScreen;
+import com.mbx.dynamickeycards.menu.CardReaderConfigScreen;
 import com.mbx.dynamickeycards.registry.DKMenuTypes;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.neoforged.api.distmarker.Dist;
@@ -14,6 +14,6 @@ public class DKClientSetup {
 
     @SubscribeEvent
     static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
-        event.register(DKMenuTypes.BROADCAST_MODE.get(), BroadcastModeScreen::new);
+        event.register(DKMenuTypes.BROADCAST_MODE.get(), CardReaderConfigScreen::new);
     }
 }
