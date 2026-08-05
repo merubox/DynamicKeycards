@@ -1,0 +1,75 @@
+{
+  "parent": "block/block",
+  "render_type": "cutout",
+  "ambientocclusion": false,
+  "textures": {
+    "front": "dynamickeycards:block/sensor/wall/sensor_wall_pink_front_off",
+    "top": "dynamickeycards:block/sensor/wall/sensor_wall_pink_top",
+    "bottom": "dynamickeycards:block/sensor/wall/sensor_wall_pink_bottom_off",
+    "side": "dynamickeycards:block/sensor/wall/sensor_wall_pink_side",
+    "particle": "dynamickeycards:block/sensor/wall/sensor_wall_pink_front_off"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        7,
+        4
+      ],
+      "to": [
+        2,
+        9,
+        12
+      ],
+      "faces": {
+        "east": {
+          "texture": "#front",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "up": {
+          "texture": "#top",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "rotation": 270
+        },
+        "down": {
+          "texture": "#bottom",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "rotation": 90
+        },
+        "north": {
+          "texture": "#side",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#side",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      }
+    }
+  ]
+}

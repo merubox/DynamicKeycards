@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "present=false,facing=north": { "model": "dynamickeycards:block/sensor/wall_sensor_off_north" },
+    "present=false,facing=east": { "model": "dynamickeycards:block/sensor/wall_sensor_off_east" },
+    "present=false,facing=south": { "model": "dynamickeycards:block/sensor/wall_sensor_off_south" },
+    "present=false,facing=west": { "model": "dynamickeycards:block/sensor/wall_sensor_off_west" },
+    "present=true,facing=north": { "model": "dynamickeycards:block/sensor/wall_sensor_on_north" },
+    "present=true,facing=east": { "model": "dynamickeycards:block/sensor/wall_sensor_on_east" },
+    "present=true,facing=south": { "model": "dynamickeycards:block/sensor/wall_sensor_on_south" },
+    "present=true,facing=west": { "model": "dynamickeycards:block/sensor/wall_sensor_on_west" }
+  }
+}

@@ -1,7 +1,7 @@
 package com.mbx.dynamickeycards.emi;
 
 import com.mbx.dynamickeycards.DynamicKeycards;
-import com.mbx.dynamickeycards.menu.CardReaderConfigScreen;
+import com.mbx.dynamickeycards.menu.LinkDeviceScreen;
 import com.mbx.dynamickeycards.registry.DKBlocks;
 import com.mbx.dynamickeycards.registry.DKItems;
 import dev.emi.emi.api.EmiEntrypoint;
@@ -43,7 +43,7 @@ public class DKEmiPlugin implements EmiPlugin {
         // otherwise EMI's item panel draws its stacks right over the config screen's device
         // icon (which sits outside the screen's own background rectangle, next to the arrow)
         // - and, while the pulse length popup is open, over that full-screen overlay too
-        registry.addExclusionArea(CardReaderConfigScreen.class, (screen, consumer) -> {
+        registry.addExclusionArea(LinkDeviceScreen.class, (screen, consumer) -> {
             int[] bounds = screen.getDeviceIconScreenBounds();
             consumer.accept(new Bounds(bounds[0], bounds[1], bounds[2], bounds[3]));
 

@@ -11,7 +11,7 @@ A NeoForge mod for Minecraft **1.21.1**.
 
 Place a **card reader** — it binds to you. Register a **blank card** on it and the card
 becomes a keyed **keycard**; using a registered card on the reader emits a 3-second
-redstone pulse. That's the whole loop: doors, vaults, and machines that only open for
+redstone signal. That's the whole loop: doors, vaults, and machines that only open for
 the right card.
 
 On top of that:
@@ -40,6 +40,16 @@ On top of that:
   removed/cancelled, low bass = denied. Vanilla note-block tones, no custom assets.
 - **Dye recycling** — craft any card with a dye to reset it into that color's blank
   card.
+- **Sensors** — wall- or ceiling-mounted, in a plain and an advanced tier.
+  Hold a continuous redstone signal for as long as something's in range, with a
+  configurable release delay. The advanced tier can bind to a reader (hold it,
+  right-click the reader) and trigger that reader remotely for anyone nearby
+  carrying a registered card — its own signal still fires too. It can also be dyed
+  to match your build, and reset with a gold nugget.
+- **Devices can link to each other** — hold an unplaced reader (or a sensor set to
+  bind) and right-click an existing reader to connect them. Linked readers accept a
+  card the moment it's registered on either one; everything else about each device
+  stays fully independent.
 
 ## Integrations (all optional)
 
@@ -47,7 +57,7 @@ On top of that:
 |---|---|
 | **EMI** | The machine processes as recipe categories: Card Registering (blank/keycard → keycard, per color) and Card Duplicating (fork / issue member / co-manager, per color), shown as a left-to-right process with the machine as a hoverable catalyst. |
 | **Jade** | Readers show their owner and register-mode state; duplicators show whether a copy is pending. |
-| **Create** | Standing + wrench right-click on a reader opens **Link Mode**: two frequency slots let the reader's accept pulse transmit wirelessly over a Redstone Link network, and a number display lets you dial in the reader's pulse length (holding right-click on it opens a tick/second/minute adjustment scale). Sneak + wrench lets the reader's owner pick it up straight into their inventory, on any reader. |
+| **Create** | Standing + wrench right-click on a reader or sensor opens its link screen: two frequency slots let its accept signal transmit wirelessly over a Redstone Link network, **Mixed Mode** sends it both wirelessly and over physical redstone at once, and a number display lets you dial in the signal length (holding right-click on it opens a tick/second/minute adjustment scale). Sneak + wrench picks the device up straight into your inventory (readers: owner only). |
 
 Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, Nederlands, 中文(简体).
 
@@ -74,6 +84,8 @@ Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, 
 | 0.1.1 | Estate Keycard (owner-scoped master key) |
 | 0.1.2 | Configurable pulse length, reader ownership transfer command |
 | 0.1.3 | Obsidian Card Reader, Create integration (Link Mode + wrench pickup), renewed card textures |
+| 0.1.4 | Pulse length adjustment UI, Link Mode rename, wrench-pickup confirmation step |
+| 0.1.5 | Sensors (wall/ceiling, plain & advanced), advanced-sensor↔reader binding + dyeing, reader-to-reader linking, Mixed Mode |
 
 ## Requirements
 

@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "I": {
+      "tag": "c:ingots/iron"
+    },
+    "O": {
+      "item": "minecraft:observer"
+    },
+    "R": {
+      "tag": "c:dusts/redstone"
+    },
+    "G": {
+      "item": "minecraft:black_stained_glass"
+    }
+  },
+  "pattern": [
+    "III",
+    "ROR",
+    "GGG"
+  ],
+  "result": {
+    "count": 2,
+    "id": "dynamickeycards:wall_sensor"
+  },
+  "show_notification": true
+}

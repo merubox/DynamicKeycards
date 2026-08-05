@@ -1,0 +1,75 @@
+{
+  "parent": "block/block",
+  "render_type": "cutout",
+  "ambientocclusion": false,
+  "textures": {
+    "front": "dynamickeycards:block/sensor/wall/sensor_wall_cyan_front_on",
+    "top": "dynamickeycards:block/sensor/wall/sensor_wall_cyan_top",
+    "bottom": "dynamickeycards:block/sensor/wall/sensor_wall_cyan_bottom_on",
+    "side": "dynamickeycards:block/sensor/wall/sensor_wall_cyan_side",
+    "particle": "dynamickeycards:block/sensor/wall/sensor_wall_cyan_front_on"
+  },
+  "elements": [
+    {
+      "from": [
+        14,
+        7,
+        4
+      ],
+      "to": [
+        16,
+        9,
+        12
+      ],
+      "faces": {
+        "west": {
+          "texture": "#front",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "up": {
+          "texture": "#top",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "rotation": 90
+        },
+        "down": {
+          "texture": "#bottom",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "rotation": 270
+        },
+        "north": {
+          "texture": "#side",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#side",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      }
+    }
+  ]
+}

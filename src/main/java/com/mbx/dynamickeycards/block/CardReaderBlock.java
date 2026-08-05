@@ -6,11 +6,12 @@ import com.mbx.dynamickeycards.DKTooltips;
 import com.mbx.dynamickeycards.DKConfig;
 import com.mbx.dynamickeycards.compat.create.CreateLinkCompat;
 import com.mbx.dynamickeycards.item.BlankKeycardItem;
+import com.mbx.dynamickeycards.item.BoundSensorBlockItem;
 import com.mbx.dynamickeycards.item.CrewMemberKeycardItem;
 import com.mbx.dynamickeycards.item.EstateKeycardItem;
 import com.mbx.dynamickeycards.item.GoldenKeycardItem;
 import com.mbx.dynamickeycards.item.KeycardItem;
-import com.mbx.dynamickeycards.menu.CardReaderConfigMenu;
+import com.mbx.dynamickeycards.item.LinkedReaderBlockItem;
 import com.mbx.dynamickeycards.registry.DKBlockEntities;
 import com.mbx.dynamickeycards.registry.DKComponents;
 import com.mbx.dynamickeycards.registry.DKItems;
@@ -19,15 +20,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -70,7 +68,7 @@ import java.util.UUID;
  * standing use always passes, sneaking use toggles register mode like the owner's bare
  * hand would.
  */
-public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock implements EntityBlock {
+public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock implements EntityBlock, WrenchConfigurableBlock {
 
     public static final BooleanProperty PRESSED = BooleanProperty.create("pressed");
     public static final EnumProperty<CardReaderMode> MODE = EnumProperty.create("mode", CardReaderMode.class);
@@ -115,9 +113,25 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
-        if (!level.isClientSide && placer instanceof Player player
-                && level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader) {
+        if (level.isClientSide || !(level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader)) {
+            return;
+        }
+        if (placer instanceof Player player) {
             reader.setOwner(player.getUUID());
+        }
+        // if this reader item was set to link with an existing one (see LinkedReaderBlockItem),
+        // point both readers at each other now that this one actually exists in the world
+        BlockPos linkTarget = LinkedReaderBlockItem.linkedReader(stack);
+        if (linkTarget != null && level.getBlockEntity(linkTarget) instanceof CardReaderBlockEntity target) {
+            reader.setLinkedReader(linkTarget);
+            target.setLinkedReader(pos);
+            if (placer instanceof Player player) {
+                // green: unlike the white "tuned" message shown when the item was set to link,
+                // this is the point the link actually exists
+                player.displayClientMessage(
+                        Component.translatable("dynamickeycards.link_device.linked").withStyle(ChatFormatting.GREEN), true);
+                DKSounds.confirm(level, pos);
+            }
         }
     }
 
@@ -177,12 +191,34 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             if (player.isShiftKeyDown()) {
                 return wrenchSneakInteract(state, level, pos, player, reader);
             }
-            // standing: open broadcast mode
-            if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-                MenuProvider provider = new SimpleMenuProvider(
-                        (containerId, playerInventory, opener) -> new CardReaderConfigMenu(containerId, playerInventory, reader),
-                        state.getBlock().getName());
-                serverPlayer.openMenu(provider, buf -> buf.writeBlockPos(pos));
+            // standing: open the config UI
+            return openLinkDeviceMenu(state, level, pos, player, reader);
+        }
+        // Advanced sensor item, still unplaced: binds it to this reader instead of any of the
+        // usual keycard/wrench handling below - handled here rather than the item's own useOn so
+        // it isn't swallowed by the SKIP_DEFAULT_BLOCK_INTERACTION fallback a few lines down.
+        if (stack.getItem() instanceof BoundSensorBlockItem sensorItem) {
+            if (!level.isClientSide) {
+                sensorItem.bindTo(stack, pos);
+                // white, not green: this only tunes the held item, the actual connection isn't
+                // "complete" (green) until it's placed - see AdvancedSensorBlockEntity#announcePlaced
+                player.displayClientMessage(
+                        Component.translatable("dynamickeycards.link_device.tuned").withStyle(ChatFormatting.WHITE), true);
+                DKSounds.confirm(level, pos);
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+        // Reader item, still unplaced: sets it to link with this reader instead of any of the
+        // usual keycard/wrench handling below - same reasoning as the sensor case above. Linking
+        // only shares registered/blocked cards (see CardReaderBlockEntity#accepts) - each reader
+        // keeps its own owner, mode/frequency, and pulse.
+        if (stack.getItem() instanceof LinkedReaderBlockItem readerItem) {
+            if (!level.isClientSide) {
+                readerItem.linkTo(stack, pos);
+                // white, not green: see the sensor case above for why
+                player.displayClientMessage(
+                        Component.translatable("dynamickeycards.link_device.tuned").withStyle(ChatFormatting.WHITE), true);
+                DKSounds.confirm(level, pos);
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
@@ -279,9 +315,8 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         if (sneaking) {
             return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
         }
-        UUID ownKey = KeycardItem.ownKey(stack);
-        boolean blocked = ownKey != null && reader.isBlocked(ownKey);
-        if (!blocked && ownKey != null && reader.isRegisteredAny(KeycardItem.allKeys(stack))) {
+        // accepts() also honors a linked reader's own registrations/blocks - see CardReaderBlockEntity#accepts
+        if (reader.accepts(stack)) {
             if (state.getValue(MODE) != CardReaderMode.OFF) {
                 return ItemInteractionResult.CONSUME;
             }
@@ -318,7 +353,7 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
                         DKSounds.remove(level, pos);
                     } else {
                         // a full reset is destructive — ask for a confirming second click
-                        reader.setResetPending(true);
+                        reader.armResetPending();
                         message(player, "reset_confirm", ChatFormatting.RED);
                         DKSounds.deny(level, pos);
                     }
@@ -342,10 +377,10 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
     }
 
     /**
-     * Sneak + Create wrench: for the reader's owner, a confirming second click moves the
-     * block straight into their inventory instead of breaking it normally — same two-step
-     * shape as the golden-keycard full reset, first click just warns. A non-owner gets the
-     * same "not_bound" response as a sneak-click with a bare hand.
+     * Sneak + Create wrench: only the reader's owner may pick it up (protects its
+     * access-control config from being carried off by anyone else) - a non-owner gets the same
+     * "not_bound" response as a sneak-click with a bare hand. The actual confirm-then-pickup
+     * mechanic is shared with the motion sensors, see {@link #wrenchPickup}.
      */
     private ItemInteractionResult wrenchSneakInteract(BlockState state, Level level, BlockPos pos,
                                                        Player player, CardReaderBlockEntity reader) {
@@ -356,21 +391,7 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
-        if (!level.isClientSide) {
-            if (!reader.isWrenchPickupPending()) {
-                reader.setWrenchPickupPending(true);
-                message(player, "wrench_pickup_confirm", ChatFormatting.RED);
-                DKSounds.deny(level, pos);
-                return ItemInteractionResult.sidedSuccess(false);
-            }
-            ItemStack pickedUp = new ItemStack(state.getBlock());
-            if (!player.getInventory().add(pickedUp)) {
-                player.drop(pickedUp, false);
-            }
-            level.levelEvent(null, 2001, pos, Block.getId(state));
-            level.removeBlock(pos, false);
-        }
-        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        return wrenchPickup(state, level, pos, player, reader);
     }
 
     /**
@@ -381,8 +402,14 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
      * pulse started. {@link #tickPulseTimeout} checks the elapsed time against the reader's
      * current pulse length every game tick instead, so a length change takes effect on the
      * very next tick, whichever direction it moves.
+     *
+     * <p>Package-visible (not private) so {@code AdvancedSensorBlockEntity} can trigger the
+     * exact same accept - sound, visuals, redstone, everything - as an ambient card-possession
+     * detection instead of a physical tap. {@code player} is only used for the locally-sourced
+     * click sound and the {@code GameEvent} listener position, both of which tolerate {@code null}
+     * (a level-wide, unattributed sound/event) same as {@link #tickPulseTimeout}'s release already does.
      */
-    private void acceptPulse(BlockState state, Level level, BlockPos pos, Player player) {
+    void acceptPulse(BlockState state, Level level, BlockPos pos, @Nullable Player player) {
         CardReaderBlockEntity reader = level.getBlockEntity(pos) instanceof CardReaderBlockEntity r ? r : null;
         level.setBlock(pos, state.setValue(MODE, CardReaderMode.ACCEPTED).setValue(PRESSED, true), Block.UPDATE_ALL);
         this.updateNeighbors(state, level, pos);
@@ -392,8 +419,8 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         }
         if (reader != null) {
             reader.onPulseStarted();
-            // mirrors the physical redstone pulse onto Create's Redstone Link network, if any
-            reader.notifyBroadcastChanged();
+            // mirrors the accept pulse onto Create's Redstone Link network, if any
+            reader.notifyLinkChanged();
         }
         level.gameEvent(player, GameEvent.BLOCK_ACTIVATE, pos);
     }
@@ -416,14 +443,28 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             return;
         }
         long elapsed = level.getGameTime() - reader.getPulseStartGameTime();
-        if (elapsed < reader.getPulseLength()) {
+        if (elapsed < reader.getSignalLength()) {
             return;
         }
+        releasePulse(state, level, pos);
+    }
+
+    /**
+     * The turn-off half of an accept pulse - same side effects as {@link #tickPulseTimeout}'s
+     * own release, factored out so a bound advanced sensor can force it immediately using its
+     * own hold-delay instead of waiting on the reader's. Safe to call on a reader that's already
+     * off (no-op via the {@code MODE != ACCEPTED} guard callers are expected to do themselves;
+     * this method itself doesn't re-check, since both current callers already know it's accepted).
+     */
+    void releasePulse(BlockState state, Level level, BlockPos pos) {
+        CardReaderBlockEntity reader = level.getBlockEntity(pos) instanceof CardReaderBlockEntity r ? r : null;
         level.setBlock(pos, state.setValue(MODE, CardReaderMode.OFF).setValue(PRESSED, false), Block.UPDATE_ALL);
         this.updateNeighbors(state, level, pos);
         level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_OFF, SoundSource.BLOCKS, 0.3f, 0.5f);
         level.gameEvent(null, GameEvent.BLOCK_DEACTIVATE, pos);
-        reader.notifyBroadcastChanged();
+        if (reader != null) {
+            reader.notifyLinkChanged();
+        }
     }
 
     private void armRegisterMode(Level level, BlockPos pos, BlockState state, CardReaderBlockEntity reader, Player player) {
@@ -461,15 +502,23 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
 
     @Override
     protected int getSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
-        return state.getValue(PRESSED) ? 15 : 0;
+        if (!state.getValue(PRESSED) || !isPhysicalSignalActive(level, pos)) {
+            return 0;
+        }
+        return 15;
     }
 
     @Override
     protected int getDirectSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
-        if (state.getValue(PRESSED) && getConnectedDirection(state) == direction) {
-            return 15;
+        if (!state.getValue(PRESSED) || getConnectedDirection(state) != direction || !isPhysicalSignalActive(level, pos)) {
+            return 0;
         }
-        return 0;
+        return 15;
+    }
+
+    /** Suppressed in link-only mode, so the wire stays silent while Create carries the pulse instead. */
+    private static boolean isPhysicalSignalActive(BlockGetter level, BlockPos pos) {
+        return !(level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader) || reader.isPhysicalSignalActive();
     }
 
     @Override

@@ -4,6 +4,40 @@
 
 All notable changes to Dynamic Keycards are documented here.
 
+## 0.1.5
+
+### Added
+- **Sensors** — wall-mounted and ceiling-mounted, in a plain and an advanced
+  tier. Detect living entities in their own cell and the one below, and output a
+  continuous redstone signal (not a pulse) for as long as something's detected, with
+  a configurable release delay (0 ticks cuts the signal the instant nothing's left).
+  Craft the plain tier (iron ×3 / redstone – observer – redstone / black stained
+  glass ×3, makes 2) or the advanced tier (same layout with gold instead of iron,
+  also makes 2); there's no separate ceiling recipe — put a wall sensor and a
+  ceiling sensor together on a crafting table to swap one for the other. Both tiers
+  can be picked back up with a Create wrench, the same as a reader.
+- **Advanced sensors bind to a card reader.** Hold one and right-click an existing
+  reader to link them (a white outline highlights the target reader while held),
+  then place it — from then on, a registered card anywhere in a nearby player's
+  inventory triggers that reader remotely, sound and light and all, as if physically
+  tapped. Its own local signal still fires too, on the same detection. Left unbound,
+  an advanced sensor behaves exactly like the plain one.
+- **Advanced sensors can be dyed.** Right-click one with any of the 16 dyes to
+  recolor it; a gold nugget resets it back to its natural look.
+- **Card readers can link to each other**, the same way: hold an unplaced reader and
+  right-click an existing one. Linked readers accept a card the moment it's
+  registered on *either* one (and honor a block on either too), but stay fully
+  independent otherwise — separate owner, mode, frequency, and signal length.
+- **Mixed Mode** — a card reader's signal mode now has a third option alongside
+  Normal and Link: send the accept signal over both the physical redstone wire and a
+  Create Redstone Link network at once. Previously it was either/or.
+
+### Changed
+- Renamed "pulse" to "signal" throughout (redstone signal, signal length).
+- The card duplicator's action-bar prompts described "inserting" a card; the
+  duplicator is touch-based, so they now say "touch" instead.
+- Assorted tooltip and message wording cleanup.
+
 ## 0.1.4
 
 ### Added

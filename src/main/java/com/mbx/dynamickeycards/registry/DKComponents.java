@@ -2,6 +2,7 @@ package com.mbx.dynamickeycards.registry;
 
 import com.mbx.dynamickeycards.DynamicKeycards;
 import com.mojang.serialization.Codec;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
@@ -57,5 +58,28 @@ public class DKComponents {
             () -> DataComponentType.<Long>builder()
                     .persistent(Codec.LONG)
                     .networkSynchronized(ByteBufCodecs.VAR_LONG)
+                    .build());
+
+    /**
+     * The reader an unplaced advanced sensor item is bound to (set by right-clicking a card
+     * reader while holding it, see {@code BoundSensorBlockItem}) - carried over into the block
+     * entity on placement. Absent means "not yet bound".
+     */
+    public static final Supplier<DataComponentType<BlockPos>> BOUND_READER = COMPONENTS.register("bound_reader",
+            () -> DataComponentType.<BlockPos>builder()
+                    .persistent(BlockPos.CODEC)
+                    .networkSynchronized(BlockPos.STREAM_CODEC)
+                    .build());
+
+    /**
+     * The reader an unplaced reader item is set to link with (set by right-clicking an existing
+     * card reader while holding it, see {@code LinkedReaderBlockItem}) - carried over into the
+     * block entity on placement, at which point both readers point to each other. Absent means
+     * "not yet linked".
+     */
+    public static final Supplier<DataComponentType<BlockPos>> LINKED_READER = COMPONENTS.register("linked_reader",
+            () -> DataComponentType.<BlockPos>builder()
+                    .persistent(BlockPos.CODEC)
+                    .networkSynchronized(BlockPos.STREAM_CODEC)
                     .build());
 }
