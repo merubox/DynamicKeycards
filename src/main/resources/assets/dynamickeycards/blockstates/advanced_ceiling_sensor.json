@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "present=false": { "model": "dynamickeycards:block/sensor/empty_ceiling" },
+    "present=true": { "model": "dynamickeycards:block/sensor/empty_ceiling" }
+  }
+}

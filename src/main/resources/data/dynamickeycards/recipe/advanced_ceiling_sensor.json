@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "redstone",
+  "ingredients": [
+    {
+      "item": "dynamickeycards:advanced_wall_sensor"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "dynamickeycards:advanced_ceiling_sensor"
+  }
+}

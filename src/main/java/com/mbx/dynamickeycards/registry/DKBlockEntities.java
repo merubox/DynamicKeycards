@@ -1,8 +1,10 @@
 package com.mbx.dynamickeycards.registry;
 
 import com.mbx.dynamickeycards.DynamicKeycards;
+import com.mbx.dynamickeycards.block.AdvancedSensorBlockEntity;
 import com.mbx.dynamickeycards.block.CardDuplicatorBlockEntity;
 import com.mbx.dynamickeycards.block.CardReaderBlockEntity;
+import com.mbx.dynamickeycards.block.MotionSensorBlockEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -24,4 +26,12 @@ public class DKBlockEntities {
     public static final Supplier<BlockEntityType<CardDuplicatorBlockEntity>> CARD_DUPLICATOR =
             BLOCK_ENTITIES.register("card_duplicator", () -> BlockEntityType.Builder.of(CardDuplicatorBlockEntity::new,
                     DKBlocks.CARD_DUPLICATOR.get()).build(null));
+
+    public static final Supplier<BlockEntityType<MotionSensorBlockEntity>> MOTION_SENSOR =
+            BLOCK_ENTITIES.register("motion_sensor", () -> BlockEntityType.Builder.of(MotionSensorBlockEntity::new,
+                    DKBlocks.WALL_SENSOR.get(), DKBlocks.CEILING_SENSOR.get()).build(null));
+
+    public static final Supplier<BlockEntityType<AdvancedSensorBlockEntity>> ADVANCED_SENSOR =
+            BLOCK_ENTITIES.register("advanced_sensor", () -> BlockEntityType.Builder.of(AdvancedSensorBlockEntity::new,
+                    DKBlocks.ADVANCED_WALL_SENSOR.get(), DKBlocks.ADVANCED_CEILING_SENSOR.get()).build(null));
 }

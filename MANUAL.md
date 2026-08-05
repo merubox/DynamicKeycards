@@ -2,7 +2,7 @@
 
 [한국어 버전 (Korean version)](MANUAL_KO.md)
 
-For version 0.1.3. Every interaction is a **right-click**; "sneak" means holding Shift.
+For version 0.1.5. Every interaction is a **right-click**; "sneak" means holding Shift.
 
 ---
 
@@ -65,7 +65,7 @@ Placeable on floors, walls, and ceilings.
 ### Basics
 - A reader **binds to the player who places it** (= the owner).
 - Once the owner **registers** a card, that card operates the reader.
-- Using a registered card (standing) emits a **redstone pulse** (signal strength 15,
+- Using a registered card (standing) emits a **brief redstone signal** (strength 15,
   strongly powering the mounting face). The default length is 3 seconds, configurable
   via `defaultPulseLengthTicks` (see §7).
 - One card can be registered on many readers, and one reader can hold many cards.
@@ -82,7 +82,7 @@ Placeable on floors, walls, and ceilings.
 | Light | Meaning |
 |---|---|
 | Off | Idle |
-| Solid green | Accepted (pulse running) |
+| Solid green | Accepted (signal active) |
 | Solid red | Denied (1s) |
 | Blinking register display | Register mode armed (the Advanced type shows its blue screen with blinking LEDs) |
 
@@ -97,7 +97,7 @@ Results are audible too: **pass = high bell**, **registered = bright pling**,
 |---|---|---|
 | Standing + bare hand | Nothing | Nothing |
 | Sneaking + bare hand | **Arm register mode** ("Register your keycard") | "Reader not bound to you" (red) |
-| Standing + registered card | **Pass** (pulse, no subtitle) | **Pass** |
+| Standing + registered card | **Pass** (signal, no subtitle) | **Pass** |
 | Standing + unregistered/blank card | "Unregistered keycard" (red) | Same |
 | Sneaking + card | Nothing | Nothing |
 | Standing + golden keycard | **Pass** | **Pass** |
@@ -128,7 +128,7 @@ Forks a keyed card onto blank keycards.
 - An 8×8 pad, placeable on floors, walls, and ceilings.
 - **No ownership** — anyone can use it.
 - **Emits no redstone.**
-- Insert the source card, then a blank card. The copy opens **everything the source
+- Touch the source card, then a blank card. The copy opens **everything the source
   could open at that moment** (card colors don't matter), and from then on the two are
   **completely separate cards**: registering, unregistering, or blocking one never
   affects the other.
@@ -152,9 +152,9 @@ pling**, **cancelled = low pling**, **rejected = low bass**.
 | Action | Result |
 |---|---|
 | Standing + bare hand | Nothing |
-| Sneaking + bare hand | Prompt ("Insert the card to duplicate") |
-| Sneaking + keyed card | **Source inserted** — green light starts blinking ("Now insert a blank card") |
-| Sneaking + keyed manager card | **Source inserted** — the manager is never re-keyed |
+| Sneaking + bare hand | Prompt ("Touch the card to duplicate") |
+| Sneaking + keyed card | **Source touched** — green light starts blinking ("Now touch a blank card") |
+| Sneaking + keyed manager card | **Source touched** — the manager is never re-keyed |
 | Sneaking + blank card | Rejected ("A blank card has nothing to duplicate", red) |
 | Sneaking + member card | Rejected ("Member access cards can't be duplicated", red) |
 | Sneaking + golden keycard | Rejected ("Golden keycards can't be duplicated", red) |
@@ -220,22 +220,27 @@ obsidian – redstone – obsidian / diamond – any blank card – gold ingot /
 - With **Jade** installed, looking at a reader shows its owner and whether register
   mode is armed, and looking at a duplicator shows whether a copy is pending
   (optional — no effect when Jade is absent).
-- With **Create** installed, a reader responds to its wrench:
-  - **Standing + wrench** opens **Link Mode** — two ghost frequency slots
-    (like a Redstone Link transmitter) that let the reader's accept pulse transmit
-    wirelessly over a Redstone Link network, in addition to the physical pulse at
-    the reader itself.
-  - The number display in that same screen shows the reader's current **pulse
+- With **Create** installed, a reader (or a motion sensor — see §8) responds to its
+  wrench:
+  - **Standing + wrench** opens the link screen — two ghost frequency slots (like a
+    Redstone Link transmitter) that let the device's accept signal transmit
+    wirelessly over a Redstone Link network. A reader's signal mode picks how: Normal
+    (physical redstone only), Link (wireless only), or **Mixed** (both physical and
+    wireless at once).
+  - The number display in that same screen shows the device's current **signal
     length**. Hold right-click on it for a moment to open an adjustment scale —
     three rows (ticks / seconds / minutes) with milestone marks every 10 units.
     Move the mouse (or scroll) to pick a value, then release right-click to confirm it.
-  - The trash-icon button in Link Mode now clears the frequency slots *and* resets
-    the pulse length back to the config's default length in one click.
-  - **Sneak + wrench**, for the reader's owner only, asks for confirmation first (red
-    warning) — a second sneak + wrench click then picks the reader straight into their
-    inventory instead of breaking it normally, reusing the block's own break sound and
-    particles for the pickup. A non-owner gets the usual "not bound to you" response.
-  - Optional — a reader behaves as it always has when Create isn't installed.
+  - The trash-icon button clears the frequency slots *and* resets the signal length
+    back to the default in one click.
+  - **Sneak + wrench** asks for confirmation first (red warning) — a second sneak +
+    wrench click then picks the device straight into your inventory instead of
+    breaking it normally, reusing the block's own break sound and particles for the
+    pickup. For a reader, this is owner-only; a non-owner gets the usual "not bound
+    to you" response. Sensors have no owner, so anyone can pick one up.
+  - A bound advanced sensor has its signal mode/frequency slots locked (the reader
+    it's bound to owns those) — only its own signal length stays adjustable there.
+  - Optional — a device behaves as it always has when Create isn't installed.
 
 ---
 
@@ -266,11 +271,83 @@ recipes (and back, via recipe-tree lookups on the cards).
 
 **Config** (`config/dynamickeycards-common.toml`):
 - `maxRegistrationsPerReader` (default 128) — per-reader registration cap.
-- `defaultPulseLengthTicks` (default 60 = 3 seconds) — the accept-pulse length used by
-  every reader. Per-reader pulse lengths are planned for a future settings UI; until
-  then this single default applies to all readers.
+- `defaultPulseLengthTicks` (default 60 = 3 seconds) — the accept-signal length used by
+  a reader that hasn't had its own set. Per-reader signal lengths can be set directly
+  from a reader's link screen (see §5's Create notes).
 
 **Command:**
 - `/dynamickeycards transfer <player>` — while looking at one of your readers, hands
   its ownership to another player. Registrations are kept; only the owner changes.
   Operators (permission level 2) can transfer any reader.
+
+---
+
+## 8. Sensors
+
+**Wall Sensor · Ceiling Sensor** (plain tier) and **Advanced Wall Sensor · Advanced
+Ceiling Sensor** (advanced tier). A wall sensor mounts on a vertical wall face and
+opens outward in the direction it was placed; a ceiling sensor mounts flush on a
+ceiling block and is fully symmetric (no facing).
+
+### Basics
+- Detects living entities (mobs, players — spectators don't count) in its own cell
+  and the cell directly below.
+- Outputs a **continuous** redstone signal (strength 15, strongly powering the
+  mounting face) for as long as something's detected — not a brief one like a reader's.
+- **Release delay**: configurable per sensor, how long the signal keeps going after
+  the last detection (0 ticks cuts it the instant nothing's left). Same adjustment
+  screen as a reader's signal length — see the Create notes in §5.
+- **No ownership** — anyone can configure or pick one up.
+- Breaking a sensor loses its configuration (and, for the advanced tier, its binding
+  and color too).
+
+### Advanced sensors: binding to a reader
+- Hold an unplaced advanced sensor and right-click an existing card reader to set it
+  to bind — the item gets an enchant-glint shimmer and a white message confirms it
+  ("Tuned to that device"). Right-click empty air to cancel before placing it.
+- Place it: the connection completes ("Connected to the existing device", green), and
+  a white outline highlights the connected reader for as long as you're holding a
+  sensor (or reader) set to connect to it.
+- Once bound, the sensor's own signal mode and frequency slots are locked — the
+  reader owns those now. Its own signal length (the release delay above) stays
+  independently adjustable, since a proximity sensor and a tap reader are used
+  differently enough that they shouldn't share one timing knob.
+- While bound, whenever a nearby player in the sensor's detection zone carries a
+  card the reader would accept — anywhere in their inventory, not just their hand —
+  the sensor triggers the reader's own accept signal remotely: same sound, same light,
+  same redstone, as if physically tapped. The sensor's own local signal fires too,
+  on the same detection.
+- Left unbound, an advanced sensor works exactly like the plain one in every way.
+
+### Dyeing (advanced sensors only)
+- Right-click a placed advanced sensor with any of the 16 vanilla dyes to recolor
+  it (consumes one dye, unless you're in creative).
+- Right-click it with a **gold nugget** to reset it back to its natural
+  gold-accented look (consumes one nugget the same way; does nothing if it's
+  already undyed).
+
+### Recipes
+- **Wall Sensor** (makes 2): iron ingot ×3 / redstone – observer – redstone / black
+  stained glass ×3.
+- **Advanced Wall Sensor** (makes 2): the same layout with gold ingots instead of
+  iron.
+- **Ceiling Sensor** / **Advanced Ceiling Sensor**: no recipe of their own — put a
+  wall sensor (or advanced wall sensor) on a crafting table by itself to swap it for
+  the ceiling version, and vice versa.
+
+---
+
+## 9. Devices Linking to Each Other
+
+- Any card reader can link to another: hold an unplaced one and right-click an
+  existing reader — the same gesture, message sequence, and highlight as an advanced
+  sensor binding (see §8).
+- Once linked (it's mutual — both readers point at each other), each reader accepts
+  a card the moment it's registered on **either** reader, and honors a card blocked
+  on either too.
+- Everything else about each reader stays independent: owner, register mode, signal
+  mode/frequency, signal length. You still register or remove a card at one specific
+  reader — linking only changes which cards each reader *accepts*, not where you
+  manage them.
+- There's currently no way to unlink two already-placed readers — only cancel before
+  placing, by right-clicking empty air with the unplaced item.
