@@ -67,7 +67,7 @@ Placeable on floors, walls, and ceilings.
 - Once the owner **registers** a card, that card operates the reader.
 - Using a registered card (standing) emits a **brief redstone signal** (strength 15,
   strongly powering the mounting face). The default length is 3 seconds, configurable
-  via `defaultPulseLengthTicks` (see §7).
+  via `defaultPulseLengthTicks` (see §8).
 - One card can be registered on many readers, and one reader can hold many cards.
 - Forked cards are managed **individually**: removing one card's registration only
   stops that card — related copies keep working.
@@ -117,6 +117,24 @@ Results are audible too: **pass = high bell**, **registered = bright pling**,
 | Standing + golden keycard | Cancel register mode |
 | Sneaking + golden keycard (1st) | **Confirm reset** — "Sneak-click again to wipe every registered card" (red) |
 | Sneaking + golden keycard (2nd) | **Full reset** — wipes every registered card ("Card reader has been reset") |
+
+### Linking to another reader
+- Hold an unplaced reader and right-click an existing one to set it to link — the
+  item gets an enchant-glint shimmer and a white message confirms it ("Tuned to
+  that device"). Right-click empty air to cancel before placing it.
+- Place it: the connection completes ("Connected to the existing device", green),
+  and a white outline highlights the connected reader for as long as you're
+  holding a reader (or sensor) set to connect to it. The same gesture links an
+  advanced sensor to a reader too — see §4.
+- Once linked (it's mutual — both readers point at each other), each reader
+  accepts a card the moment it's registered on **either** reader, and honors a
+  card blocked on either too.
+- Everything else about each reader stays independent: owner, register mode,
+  signal mode/frequency, signal length. You still register or remove a card at
+  one specific reader — linking only changes which cards each reader *accepts*,
+  not where you manage them.
+- There's currently no way to unlink two already-placed readers — only cancel
+  before placing, by right-clicking empty air with the unplaced item.
 
 ---
 
@@ -178,7 +196,61 @@ blinking green.
 
 ---
 
-## 4. Recipes
+## 4. Sensors
+
+**Wall Sensor · Ceiling Sensor** (plain tier) and **Advanced Wall Sensor · Advanced
+Ceiling Sensor** (advanced tier). A wall sensor mounts on a vertical wall face and
+opens outward in the direction it was placed; a ceiling sensor mounts flush on a
+ceiling block and is fully symmetric (no facing).
+
+### Basics
+- Detects living entities (mobs, players — spectators don't count) in its own cell
+  and the cell directly below.
+- Outputs a **continuous** redstone signal (strength 15, strongly powering the
+  mounting face) that tracks detection directly — it stays on for as long as
+  something's there, rather than running for a fixed length once triggered like a
+  reader's signal does.
+- **Release delay**: configurable per sensor, how long the signal keeps going after
+  the last detection (0 ticks cuts it the instant nothing's left). Same adjustment
+  screen as a reader's signal length — see the Create notes in §6.
+- **No ownership** — anyone can configure or pick one up.
+- Breaking a sensor loses its configuration (and, for the advanced tier, its binding
+  and color too).
+
+### Advanced sensors: binding to a reader
+- Hold an unplaced advanced sensor and right-click an existing card reader to bind
+  them — same gesture, message flow, and highlight as linking two readers together
+  (see §2).
+- Once bound, the sensor's own signal mode and frequency slots are locked — the
+  reader owns those now. Its own signal length (the release delay above) stays
+  independently adjustable, since a proximity sensor and a tap reader are used
+  differently enough that they shouldn't share one timing knob.
+- While bound, whenever a nearby player in the sensor's detection zone carries a
+  card the reader would accept — anywhere in their inventory, not just their hand —
+  the sensor triggers the reader's own accept signal remotely: same sound, same light,
+  same redstone, as if physically tapped. The sensor's own local signal fires too,
+  on the same detection.
+- Left unbound, an advanced sensor works exactly like the plain one in every way.
+
+### Dyeing (advanced sensors only)
+- Right-click a placed advanced sensor with any of the 16 vanilla dyes to recolor
+  it (consumes one dye, unless you're in creative).
+- Right-click it with a **gold nugget** to reset it back to its natural
+  gold-accented look (consumes one nugget the same way; does nothing if it's
+  already undyed).
+
+### Recipes
+- **Wall Sensor** (makes 2): iron ingot ×3 / redstone – observer – redstone / black
+  stained glass ×3.
+- **Advanced Wall Sensor** (makes 2): the same layout with gold ingots instead of
+  iron.
+- **Ceiling Sensor** / **Advanced Ceiling Sensor**: no recipe of their own — put a
+  wall sensor (or advanced wall sensor) on a crafting table by itself to swap it for
+  the ceiling version, and vice versa.
+
+---
+
+## 5. Recipes
 
 ### Card readers (shaped)
 Middle and bottom rows are shared: **redstone – redstone lamp – redstone / iron ingot ×3**
@@ -212,7 +284,7 @@ obsidian – redstone – obsidian / diamond – any blank card – gold ingot /
 
 ---
 
-## 5. Compatibility notes
+## 6. Compatibility notes
 - Readers and duplicators can't be picked up by sneak-click carrying mods
   (e.g. Carry On).
 - Metal ingredients use common tags (`c:ingots/iron`, etc.), so equivalent materials
@@ -220,7 +292,7 @@ obsidian – redstone – obsidian / diamond – any blank card – gold ingot /
 - With **Jade** installed, looking at a reader shows its owner and whether register
   mode is armed, and looking at a duplicator shows whether a copy is pending
   (optional — no effect when Jade is absent).
-- With **Create** installed, a reader (or a motion sensor — see §8) responds to its
+- With **Create** installed, a reader (or a sensor — see §4) responds to its
   wrench:
   - **Standing + wrench** opens the link screen — two ghost frequency slots (like a
     Redstone Link transmitter) that let the device's accept signal transmit
@@ -244,7 +316,7 @@ obsidian – redstone – obsidian / diamond – any blank card – gold ingot /
 
 ---
 
-## 6. Recipe viewer (EMI)
+## 7. Recipe viewer (EMI)
 If [EMI](https://modrinth.com/mod/emi) is installed, the card **machines** show up in
 its recipe browser — because registering and duplicating happen through block
 interaction, not a crafting grid, they get their own categories:
@@ -267,87 +339,15 @@ recipes (and back, via recipe-tree lookups on the cards).
 
 ---
 
-## 7. Config & commands
+## 8. Config & commands
 
 **Config** (`config/dynamickeycards-common.toml`):
 - `maxRegistrationsPerReader` (default 128) — per-reader registration cap.
 - `defaultPulseLengthTicks` (default 60 = 3 seconds) — the accept-signal length used by
   a reader that hasn't had its own set. Per-reader signal lengths can be set directly
-  from a reader's link screen (see §5's Create notes).
+  from a reader's link screen (see §6's Create notes).
 
 **Command:**
 - `/dynamickeycards transfer <player>` — while looking at one of your readers, hands
   its ownership to another player. Registrations are kept; only the owner changes.
   Operators (permission level 2) can transfer any reader.
-
----
-
-## 8. Sensors
-
-**Wall Sensor · Ceiling Sensor** (plain tier) and **Advanced Wall Sensor · Advanced
-Ceiling Sensor** (advanced tier). A wall sensor mounts on a vertical wall face and
-opens outward in the direction it was placed; a ceiling sensor mounts flush on a
-ceiling block and is fully symmetric (no facing).
-
-### Basics
-- Detects living entities (mobs, players — spectators don't count) in its own cell
-  and the cell directly below.
-- Outputs a **continuous** redstone signal (strength 15, strongly powering the
-  mounting face) for as long as something's detected — not a brief one like a reader's.
-- **Release delay**: configurable per sensor, how long the signal keeps going after
-  the last detection (0 ticks cuts it the instant nothing's left). Same adjustment
-  screen as a reader's signal length — see the Create notes in §5.
-- **No ownership** — anyone can configure or pick one up.
-- Breaking a sensor loses its configuration (and, for the advanced tier, its binding
-  and color too).
-
-### Advanced sensors: binding to a reader
-- Hold an unplaced advanced sensor and right-click an existing card reader to set it
-  to bind — the item gets an enchant-glint shimmer and a white message confirms it
-  ("Tuned to that device"). Right-click empty air to cancel before placing it.
-- Place it: the connection completes ("Connected to the existing device", green), and
-  a white outline highlights the connected reader for as long as you're holding a
-  sensor (or reader) set to connect to it.
-- Once bound, the sensor's own signal mode and frequency slots are locked — the
-  reader owns those now. Its own signal length (the release delay above) stays
-  independently adjustable, since a proximity sensor and a tap reader are used
-  differently enough that they shouldn't share one timing knob.
-- While bound, whenever a nearby player in the sensor's detection zone carries a
-  card the reader would accept — anywhere in their inventory, not just their hand —
-  the sensor triggers the reader's own accept signal remotely: same sound, same light,
-  same redstone, as if physically tapped. The sensor's own local signal fires too,
-  on the same detection.
-- Left unbound, an advanced sensor works exactly like the plain one in every way.
-
-### Dyeing (advanced sensors only)
-- Right-click a placed advanced sensor with any of the 16 vanilla dyes to recolor
-  it (consumes one dye, unless you're in creative).
-- Right-click it with a **gold nugget** to reset it back to its natural
-  gold-accented look (consumes one nugget the same way; does nothing if it's
-  already undyed).
-
-### Recipes
-- **Wall Sensor** (makes 2): iron ingot ×3 / redstone – observer – redstone / black
-  stained glass ×3.
-- **Advanced Wall Sensor** (makes 2): the same layout with gold ingots instead of
-  iron.
-- **Ceiling Sensor** / **Advanced Ceiling Sensor**: no recipe of their own — put a
-  wall sensor (or advanced wall sensor) on a crafting table by itself to swap it for
-  the ceiling version, and vice versa.
-
----
-
-## 9. Devices Linking to Each Other
-
-- Any card reader can link to another: hold an unplaced one and right-click an
-  existing reader — the same gesture, message sequence, and highlight as an advanced
-  sensor binding (see §8).
-- Once linked (it's mutual — both readers point at each other), each reader accepts
-  a card the moment it's registered on **either** reader, and honors a card blocked
-  on either too.
-- Everything else about each reader stays independent: owner, register mode, signal
-  mode/frequency, signal length. You still register or remove a card at one specific
-  reader — linking only changes which cards each reader *accepts*, not where you
-  manage them.
-- There's currently no way to unlink two already-placed readers — only cancel before
-  placing, by right-clicking empty air with the unplaced item.
