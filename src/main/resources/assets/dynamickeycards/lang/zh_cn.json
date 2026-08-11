@@ -88,6 +88,7 @@
   "dynamickeycards.link_device.tuned": "已调谐至该设备",
   "dynamickeycards.link_device.linked": "已与现有设备连接完成",
   "dynamickeycards.link_device.cancelled": "已取消连接",
+  "dynamickeycards.link_device.already_bound": "该设备已连接到其他装置",
   "dynamickeycards.estate.confirm": "再次右键将此卡登记到你名下",
   "dynamickeycards.estate.registered": "已登记给 %s",
   "dynamickeycards.card_reader.member_not_registerable": "成员门禁卡无法注册",

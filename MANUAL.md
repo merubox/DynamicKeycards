@@ -2,7 +2,7 @@
 
 [한국어 버전 (Korean version)](MANUAL_KO.md)
 
-For version 0.1.5. Every interaction is a **right-click**; "sneak" means holding Shift.
+For version 0.1.6. Every interaction is a **right-click**; "sneak" means holding Shift.
 
 ---
 
@@ -230,7 +230,23 @@ ceiling block and is fully symmetric (no facing).
   the sensor triggers the reader's own accept signal remotely: same sound, same light,
   same redstone, as if physically tapped. The sensor's own local signal fires too,
   on the same detection.
-- Left unbound, an advanced sensor works exactly like the plain one in every way.
+
+### Advanced sensors: binding to another sensor
+- Hold an unplaced advanced sensor and right-click an existing one (plain or
+  advanced) to bind them instead — same gesture, message flow, and highlight as
+  binding to a reader above.
+- Binding to a **plain** sensor is one-directional: the newly placed sensor's own detection
+  remotely holds the target's signal on, the same way a bound sensor drives a
+  reader, but the plain target never drives anything back.
+- Binding to another **advanced** sensor is mutual: placing it points both sensors
+  at each other, so each one's own detection also drives the other's signal.
+- A sensor can only be bound to one thing at a time (a reader, or another sensor —
+  never both), on either end of the relationship. Right-clicking a sensor that's
+  already bound to something refuses with a message rather than replacing its
+  existing connection.
+- Left unbound, an advanced sensor works exactly like the plain one in every way -
+  this applies regardless of which kind of binding (reader or sensor) it's left
+  without.
 
 ### Dyeing (advanced sensors only)
 - Right-click a placed advanced sensor with any of the 16 vanilla dyes to recolor

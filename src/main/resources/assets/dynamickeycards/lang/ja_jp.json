@@ -88,6 +88,7 @@
   "dynamickeycards.link_device.tuned": "その機器に調整されました",
   "dynamickeycards.link_device.linked": "既存の機器との接続が完了しました",
   "dynamickeycards.link_device.cancelled": "接続がキャンセルされました",
+  "dynamickeycards.link_device.already_bound": "その機器はすでに別の機器と接続されています",
   "dynamickeycards.estate.confirm": "もう一度右クリックで、このカードをあなたに登録します",
   "dynamickeycards.estate.registered": "%s に登録しました",
   "dynamickeycards.card_reader.member_not_registerable": "メンバーカードは登録できません",

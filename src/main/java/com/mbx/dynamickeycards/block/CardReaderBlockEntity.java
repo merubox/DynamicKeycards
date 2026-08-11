@@ -25,6 +25,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 
 /**
  * State for a card reader: the owner it bound to when placed, the set of registered
@@ -78,6 +79,28 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
      * that predates the reload, which self-corrects the moment that pulse ends on its own.
      */
     private long pulseStartGameTime = -1;
+    /**
+     * Whether the pulse currently running (if any) was started by an external driver (a bound
+     * advanced sensor calling {@link CardReaderBlock#acceptPulse} rather than a direct tap) - set
+     * once at the rising edge, alongside {@link #pulseStartGameTime}, and read by
+     * {@link CardReaderBlock#tickPulseTimeout} to decide what "the hold just ended" means: for a
+     * driver-started pulse, release the instant the driver stops wanting it held (see
+     * {@link #isExternallyHeld}), same as before; for a directly-tapped one, fall back to this
+     * reader's own configured length as always, even if some other bound sensor also happened to
+     * extend it along the way.
+     */
+    private boolean pulseExternallyOriginated;
+    /**
+     * Game time until which an external driver (a bound advanced sensor, see
+     * {@code AdvancedSensorBlockEntity}) wants this reader's accept pulse held open, regardless
+     * of this reader's own {@link #pulseStartGameTime}/{@link #getSignalLength} timing.
+     * {@code -1} while nobody's holding it. {@link CardReaderBlock#tickPulseTimeout} is still the
+     * only place that ever calls {@link CardReaderBlock#releasePulse} - a driver only ever
+     * pushes this deadline forward (see {@link #holdExternalSignal}), it never releases the
+     * pulse itself, so a driver's own hold-delay lapsing can no longer race against this reader's
+     * own timeout to flip the pulse off and immediately back on again.
+     */
+    private long externalHoldUntilGameTime = -1;
 
     /**
      * Create Redstone Link (only meaningful when Create is installed): the two ghost frequency
@@ -184,15 +207,36 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
     }
 
     /** Called by {@link CardReaderBlock#acceptPulse} the moment a pulse begins. */
-    void onPulseStarted() {
+    void onPulseStarted(boolean externallyOriginated) {
         if (level != null) {
             pulseStartGameTime = level.getGameTime();
         }
+        this.pulseExternallyOriginated = externallyOriginated;
     }
 
-    /** Game time {@link #onPulseStarted()} last ran; {@code -1} if no pulse has run yet. */
+    /** Game time {@link #onPulseStarted}'s pulse began; {@code -1} if no pulse has run yet. */
     long getPulseStartGameTime() {
         return pulseStartGameTime;
+    }
+
+    /** See {@link #pulseExternallyOriginated}. */
+    boolean isPulseExternallyOriginated() {
+        return pulseExternallyOriginated;
+    }
+
+    /**
+     * Called every tick by an external driver (a bound advanced sensor) that currently wants
+     * this reader's accept pulse held open. Only ever pushes the deadline forward
+     * ({@code Math.max}), so multiple simultaneous drivers - or this call racing against
+     * {@link CardReaderBlock#tickPulseTimeout} in either order - can't undo each other.
+     */
+    void holdExternalSignal(long untilGameTime) {
+        this.externalHoldUntilGameTime = Math.max(this.externalHoldUntilGameTime, untilGameTime);
+    }
+
+    /** Whether an external driver still wants this reader's pulse held open right now - see {@link #holdExternalSignal}. */
+    boolean isExternallyHeld(long now) {
+        return now < externalHoldUntilGameTime;
     }
 
     /** Ghost frequency slot {@code index} (0 or 1) for Create's Redstone Link broadcast. */
@@ -334,6 +378,26 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
     public void setLinkedReader(@Nullable BlockPos pos) {
         this.linkedReaderPos = pos;
         this.syncToClient();
+    }
+
+    /**
+     * Rewrites {@link #linkedReaderPos} through {@code transform} - called from
+     * {@code compat.create.PositionTransformCompat} when this reader is moved as a whole (a
+     * Create schematic printed at an offset/rotation, or a contraption disassembling elsewhere).
+     * A stored position is a world-absolute {@link BlockPos}, so without this it would keep
+     * pointing at wherever the linked reader used to be, not wherever this move actually put it.
+     * Applied unconditionally rather than checking whether a reader now exists there: if the
+     * linked reader moved along with this one (the common case - they're usually part of the
+     * same build), the transformed position is exactly right; if it didn't move with this one,
+     * the position was already going to be wrong either way, and this doesn't make that any
+     * worse - the existing null/type checks everywhere this field is read already treat "nothing
+     * there" as simply unlinked.
+     */
+    public void applyPositionTransform(UnaryOperator<BlockPos> transform) {
+        if (linkedReaderPos != null) {
+            linkedReaderPos = transform.apply(linkedReaderPos);
+            this.syncToClient();
+        }
     }
 
     @Nullable

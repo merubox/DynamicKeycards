@@ -82,4 +82,17 @@ public class DKComponents {
                     .persistent(BlockPos.CODEC)
                     .networkSynchronized(BlockPos.STREAM_CODEC)
                     .build());
+
+    /**
+     * The sensor an unplaced advanced sensor item is set to bind with (set by right-clicking an
+     * existing wall/ceiling sensor - plain or advanced - while holding it, see
+     * {@code BoundSensorBlockItem}) - carried over into the block entity on placement. Mutually
+     * exclusive with {@link #BOUND_READER}: setting one clears the other, since a sensor can only
+     * be bound to one thing at a time. Absent means "not yet bound to a sensor".
+     */
+    public static final Supplier<DataComponentType<BlockPos>> BOUND_SENSOR = COMPONENTS.register("bound_sensor",
+            () -> DataComponentType.<BlockPos>builder()
+                    .persistent(BlockPos.CODEC)
+                    .networkSynchronized(BlockPos.STREAM_CODEC)
+                    .build());
 }

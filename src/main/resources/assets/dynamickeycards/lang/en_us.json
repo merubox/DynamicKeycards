@@ -88,6 +88,7 @@
   "dynamickeycards.link_device.tuned": "Tuned to that device",
   "dynamickeycards.link_device.linked": "Connected to the existing device",
   "dynamickeycards.link_device.cancelled": "Connection cancelled",
+  "dynamickeycards.link_device.already_bound": "That device is already connected to something else",
   "dynamickeycards.estate.confirm": "Right-click again to bind this card to you",
   "dynamickeycards.estate.registered": "Bound to %s",
   "dynamickeycards.card_reader.member_not_registerable": "Member access cards can't be registered",

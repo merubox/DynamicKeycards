@@ -40,6 +40,17 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
     private long wrenchPickupPendingStartTime = -1;
     /** Game time an entity was last detected; {@code -1} if none has been detected yet. */
     private long lastDetectedGameTime = -1;
+    /**
+     * Game time until which an external driver (a bound advanced sensor whose own detection
+     * targets this one, see {@code AdvancedSensorBlockEntity}) wants this sensor's own signal
+     * held on, regardless of this sensor's own local detection. {@code -1} while nobody's
+     * holding it. This sensor's own {@link #tick} is still the only place that ever actually
+     * flips {@code PRESENT} - a driver only ever pushes this deadline forward (see
+     * {@link #holdExternalSignal}), never touches the blockstate directly - so two drivers (or a
+     * driver and this sensor's own detection) can never race to independently flip the same
+     * state twice in a row the way an early version of the reader-binding code did.
+     */
+    private long externalHoldUntilGameTime = -1;
 
     private final ItemStack[] frequencySlots = {ItemStack.EMPTY, ItemStack.EMPTY};
     private SignalMode signalMode = SignalMode.NORMAL;
@@ -63,29 +74,57 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
     }
 
     static void tick(Level level, BlockPos pos, BlockState state, MotionSensorBlockEntity be) {
+        long now = level.getGameTime();
+        boolean shouldSignal = computeShouldSignal(level, pos, state, be, now) || be.isExternallyHeld(now);
+        applyPresent(level, pos, state, be, shouldSignal);
+    }
+
+    /**
+     * This sensor's own zone-detection-driven signal state: detected right now, or still within
+     * its own release-delay window after the last detection - excludes any external hold (see
+     * {@link #isExternallyHeld}), which is a separate, independent reason to signal. Package-visible
+     * so a bound advanced sensor driving another sensor ({@code AdvancedSensorBlockEntity}) can
+     * compute the exact same thing for itself, both for its own local output and for what to
+     * relay to its target - the target ends up mirroring the driving sensor's own on/off pattern,
+     * release delay included, rather than just a raw "detected right now" blip.
+     */
+    static boolean computeShouldSignal(Level level, BlockPos pos, BlockState state, MotionSensorBlockEntity be, long now) {
         if (!(state.getBlock() instanceof MotionSensorBlock sensor)) {
-            return;
+            return false;
         }
         boolean detected = !level.getEntitiesOfClass(LivingEntity.class, sensor.detectionZone(pos),
                 MotionSensorBlockEntity::countsAsPresent).isEmpty();
-        long now = level.getGameTime();
         if (detected) {
             be.lastDetectedGameTime = now;
         }
         // 0t: no lingering, drops the instant nothing's detected. >0t: keeps signalling until
         // that many ticks have passed since the last detection, resetting if something re-enters.
-        boolean shouldSignal = detected || (be.signalLength > 0 && be.lastDetectedGameTime >= 0
+        return detected || (be.signalLength > 0 && be.lastDetectedGameTime >= 0
                 && now - be.lastDetectedGameTime < be.signalLength);
-        applyPresent(level, pos, state, be, shouldSignal);
+    }
+
+    /**
+     * Called every tick by an external driver (a bound advanced sensor targeting this one) that
+     * currently wants this sensor's signal held on. Only ever pushes the deadline forward
+     * ({@code Math.max}), so multiple simultaneous drivers - or this call racing against this
+     * sensor's own {@link #tick} in either order - can't undo each other; whichever deadline is
+     * furthest out wins, and this sensor's own {@link #tick} is still the sole place that acts on it.
+     */
+    void holdExternalSignal(long untilGameTime) {
+        this.externalHoldUntilGameTime = Math.max(this.externalHoldUntilGameTime, untilGameTime);
+    }
+
+    boolean isExternallyHeld(long now) {
+        return now < externalHoldUntilGameTime;
     }
 
     /**
      * Pushes {@code shouldSignal} into this block's own {@code PRESENT} state (its own local
      * redstone output around its own position) if it changed. Shared with
-     * {@link AdvancedSensorBlockEntity}'s bound-mode tick, which computes {@code shouldSignal}
-     * from whether the bound reader would accept a nearby player's card rather than from this
-     * sensor's own {@link #detectionZone} scan, but still wants its own signal to fire alongside
-     * the reader's.
+     * {@link AdvancedSensorBlockEntity}'s bound-mode ticks, which compute {@code shouldSignal}
+     * from whatever they're bound to (a reader accepting a nearby player's card, or another
+     * sensor's own on/off pattern) rather than this sensor's own zone scan, but still want their
+     * own signal to fire alongside whatever they're driving.
      */
     protected static void applyPresent(Level level, BlockPos pos, BlockState state, MotionSensorBlockEntity be, boolean shouldSignal) {
         if (!(state.getBlock() instanceof MotionSensorBlock sensor) || shouldSignal == state.getValue(MotionSensorBlock.PRESENT)) {

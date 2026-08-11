@@ -44,8 +44,9 @@ On top of that:
   Hold a continuous redstone signal for as long as something's in range, with a
   configurable release delay. The advanced tier can bind to a reader (hold it,
   right-click the reader) and trigger that reader remotely for anyone nearby
-  carrying a registered card — its own signal still fires too. It can also be dyed
-  to match your build, and reset with a gold nugget.
+  carrying a registered card — its own signal still fires too. It can also bind to
+  another sensor instead (one-directional onto a plain one, mutual between two
+  advanced ones), and can be dyed to match your build, reset with a gold nugget.
 - **Devices can link to each other** — hold an unplaced reader (or a sensor set to
   bind) and right-click an existing reader to connect them. Linked readers accept a
   card the moment it's registered on either one; everything else about each device
@@ -86,6 +87,7 @@ Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, 
 | 0.1.3 | Obsidian Card Reader, Create integration (Link Mode + wrench pickup), renewed card textures |
 | 0.1.4 | Pulse length adjustment UI, Link Mode rename, wrench-pickup confirmation step |
 | 0.1.5 | Sensors (wall/ceiling, plain & advanced), advanced-sensor↔reader binding + dyeing, reader-to-reader linking, Mixed Mode |
+| 0.1.6 | Sensor-to-sensor binding, connections survive Create schematics/contraptions, quieter connection sounds |
 
 ## Requirements
 

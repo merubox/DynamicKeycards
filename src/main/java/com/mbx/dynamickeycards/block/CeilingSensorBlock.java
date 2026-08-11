@@ -152,6 +152,12 @@ public class CeilingSensorBlock extends Block implements EntityBlock, MotionSens
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
                                               Player player, InteractionHand hand, BlockHitResult hit) {
+        if (!stack.isEmpty()) {
+            ItemInteractionResult bindResult = tryBindItemInteraction(stack, level, pos, player);
+            if (bindResult != null) {
+                return bindResult;
+            }
+        }
         if (stack.isEmpty() || !CreateLinkCompat.isLoaded() || !stack.is(Tags.Items.TOOLS_WRENCH)) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }

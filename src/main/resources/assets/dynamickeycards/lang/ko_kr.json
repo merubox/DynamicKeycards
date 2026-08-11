@@ -88,6 +88,7 @@
   "dynamickeycards.link_device.tuned": "해당 장치로 조정되었습니다",
   "dynamickeycards.link_device.linked": "기존 장치에 연결이 완료되었습니다",
   "dynamickeycards.link_device.cancelled": "연결이 취소되었습니다",
+  "dynamickeycards.link_device.already_bound": "이미 다른 장치에 연결되어 있습니다",
   "dynamickeycards.estate.confirm": "한 번 더 우클릭하면 이 카드가 당신에게 등록됩니다",
   "dynamickeycards.estate.registered": "%s에게 등록되었습니다",
   "dynamickeycards.card_reader.member_not_registerable": "멤버 출입 카드는 등록할 수 없습니다",

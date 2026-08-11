@@ -1,6 +1,5 @@
 package com.mbx.dynamickeycards.block;
 
-import com.mbx.dynamickeycards.item.BoundSensorBlockItem;
 import com.mbx.dynamickeycards.registry.DKBlockEntities;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
@@ -43,8 +42,7 @@ public class AdvancedCeilingSensorBlock extends CeilingSensorBlock implements Ad
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
         if (!level.isClientSide && level.getBlockEntity(pos) instanceof AdvancedSensorBlockEntity sensor) {
-            sensor.setBoundReader(BoundSensorBlockItem.boundReader(stack));
-            AdvancedSensorBlockEntity.announcePlaced(level, pos, placer, sensor);
+            AdvancedSensorBlockEntity.applyPlacedBinding(level, pos, placer, sensor, stack);
         }
     }
 

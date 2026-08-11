@@ -21,6 +21,8 @@ this mod — remains covered by the repository's normal MIT license.
 | `card_reader/` | `src/main/resources/assets/dynamickeycards/textures/block/card_reader/` | All 5 reader variants (insert/touch/swipe/advanced/obsidian), all 4 states each | mailbox |
 | `cards/` | `src/main/resources/assets/dynamickeycards/textures/item/` | Every card item texture (blank/keycard/manager/member x16 colors, golden, estate) | mailbox |
 | `card_duplicator/` | `src/main/resources/assets/dynamickeycards/textures/block/card_duplicator/` | All 4 duplicator states (idle/armed/complete/denied) | mailbox |
+| `sensor/wall/` | `src/main/resources/assets/dynamickeycards/textures/block/sensor/wall/` | Wall sensor: plain + all 16 dye colors, off/on states | mailbox |
+| `sensor/ceiling/` | `src/main/resources/assets/dynamickeycards/textures/block/sensor/ceiling/` | Ceiling sensor: plain + all 16 dye colors, off/on states | mailbox |
 
 Copyright (c) mailbox. All rights reserved. These designs may not be copied,
 redistributed, or reused without permission, notwithstanding the MIT license that

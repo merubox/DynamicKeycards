@@ -87,6 +87,7 @@
   "dynamickeycards.link_device.tuned": "Sintonizado con ese dispositivo",
   "dynamickeycards.link_device.linked": "Conectado al dispositivo existente",
   "dynamickeycards.link_device.cancelled": "Conexión cancelada",
+  "dynamickeycards.link_device.already_bound": "Ese dispositivo ya está conectado a otra cosa",
   "dynamickeycards.link_device.wrench_pickup_confirm": "Vuelve a agacharte y hacer clic con la llave para recoger el dispositivo",
   "dynamickeycards.estate.confirm": "Vuelve a hacer clic derecho para vincular la tarjeta a ti",
   "dynamickeycards.estate.registered": "Vinculada a %s",

@@ -4,6 +4,28 @@
 
 All notable changes to Dynamic Keycards are documented here.
 
+## 0.1.6
+
+### Added
+- **Advanced sensors can also bind to another sensor**, plain or advanced, the same
+  way they bind to a reader: hold one and right-click an existing sensor. Binding to
+  a plain sensor is one-directional (the newly placed one drives the target's signal
+  remotely); binding to another advanced sensor is mutual, so each one drives the
+  other. A sensor can only be bound to one thing at a time - trying to bind to a
+  sensor that's already bound to something else is refused with a message instead of
+  silently replacing its existing connection.
+
+### Fixed
+- With **Create** installed: a linked reader, or a sensor bound to a reader or
+  another sensor, now keeps its connection when moved as a whole - printed
+  elsewhere (or rotated/mirrored) via a schematic, or carried by an assembled
+  contraption.
+
+### Changed
+- Removed the sound effect on dyeing an advanced sensor, on starting a device
+  connection (the "tuned" step), and on cancelling one - only completing a
+  connection still plays a sound.
+
 ## 0.1.5
 
 ### Added

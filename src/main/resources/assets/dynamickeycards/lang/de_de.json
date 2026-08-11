@@ -88,6 +88,7 @@
   "dynamickeycards.link_device.tuned": "Auf dieses Gerät abgestimmt",
   "dynamickeycards.link_device.linked": "Mit dem vorhandenen Gerät verbunden",
   "dynamickeycards.link_device.cancelled": "Verbindung abgebrochen",
+  "dynamickeycards.link_device.already_bound": "Dieses Gerät ist bereits mit etwas anderem verbunden",
   "dynamickeycards.estate.confirm": "Erneut rechtsklicken, um die Karte an dich zu binden",
   "dynamickeycards.estate.registered": "An %s gebunden",
   "dynamickeycards.card_reader.member_not_registerable": "Mitgliedskarten können nicht registriert werden",

@@ -1,6 +1,5 @@
 package com.mbx.dynamickeycards.item;
 
-import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.registry.DKComponents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -57,7 +56,6 @@ public class LinkedReaderBlockItem extends BlockItem {
             stack.remove(DKComponents.LINKED_READER.get());
             player.displayClientMessage(
                     Component.translatable("dynamickeycards.link_device.cancelled").withStyle(ChatFormatting.WHITE), true);
-            DKSounds.remove(level, player.blockPosition());
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }

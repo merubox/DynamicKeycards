@@ -28,7 +28,6 @@ interface AdvancedSensorDyeing {
                 if (!player.getAbilities().instabuild) {
                     stack.shrink(1);
                 }
-                DKSounds.confirm(level, pos);
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }

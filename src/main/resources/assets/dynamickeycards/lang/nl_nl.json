@@ -88,6 +88,7 @@
   "dynamickeycards.link_device.tuned": "Afgestemd op dat apparaat",
   "dynamickeycards.link_device.linked": "Verbonden met het bestaande apparaat",
   "dynamickeycards.link_device.cancelled": "Verbinding geannuleerd",
+  "dynamickeycards.link_device.already_bound": "Dat apparaat is al met iets anders verbonden",
   "dynamickeycards.estate.confirm": "Klik nogmaals rechts om de kaart aan jou te binden",
   "dynamickeycards.estate.registered": "Gebonden aan %s",
   "dynamickeycards.card_reader.member_not_registerable": "Lid-toegangskaarten kunnen niet geregistreerd worden",

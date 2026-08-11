@@ -1,6 +1,7 @@
 package com.mbx.dynamickeycards;
 
 import com.mbx.dynamickeycards.block.CardReaderBlock;
+import com.mbx.dynamickeycards.block.MotionSensorBlock;
 import com.mbx.dynamickeycards.item.BoundSensorBlockItem;
 import com.mbx.dynamickeycards.item.LinkedReaderBlockItem;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
@@ -19,6 +20,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -32,12 +34,12 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Highlights the reader a held {@link BoundSensorBlockItem} or {@link LinkedReaderBlockItem} is
- * set to connect with:
+ * Highlights the reader or sensor a held {@link BoundSensorBlockItem} or
+ * {@link LinkedReaderBlockItem} is set to connect with:
  *
  * <ul>
  *   <li>Shown every frame regardless of where the player is looking, for the specific target
- *   reader only, out to 64 blocks - refreshed every tick the item is held.</li>
+ *   block only, out to 64 blocks - refreshed every tick the item is held.</li>
  *   <li><b>Edges only, no face fill.</b> Just the 12 edges of the reader's own selection shape.</li>
  *   <li>The 12 edges are real solid geometry, not thin {@code GL_LINES} - each one an actual
  *   6-faced cuboid, drawn opaque and lit ({@code DefaultVertexFormat.NEW_ENTITY} +
@@ -115,9 +117,9 @@ public class DKClientEvents {
         LocalPlayer player = minecraft.player;
         BlockPos target = null;
         if (player != null && minecraft.level != null) {
-            BlockPos bound = boundReaderPos(player);
+            BlockPos bound = highlightTargetOf(player);
             if (bound != null && player.canInteractWithBlock(bound, MAX_RANGE)
-                    && minecraft.level.getBlockState(bound).getBlock() instanceof CardReaderBlock) {
+                    && isHighlightable(minecraft.level.getBlockState(bound).getBlock())) {
                 target = bound;
             }
         }
@@ -142,7 +144,7 @@ public class DKClientEvents {
             return;
         }
         BlockState readerState = minecraft.level.getBlockState(highlightTarget);
-        if (!(readerState.getBlock() instanceof CardReaderBlock)) {
+        if (!isHighlightable(readerState.getBlock())) {
             return;
         }
         VoxelShape shape = readerState.getShape(minecraft.level, highlightTarget);
@@ -169,12 +171,15 @@ public class DKClientEvents {
         MultiBufferSource.BufferSource buffer = minecraft.renderBuffers().bufferSource();
         VertexConsumer edgeConsumer = buffer.getBuffer(EDGE_LIT);
         float lineWidth = LINE_WIDTH * alpha;
-        for (AABB localAabb : shape.toAabbs()) {
-            AABB box = localAabb.inflate(CALLER_INFLATE).move(highlightTarget);
-            boolean cameraInside = box.contains(cam);
-            box = box.inflate(cameraInside ? -CAMERA_RELATIVE_INFLATE : CAMERA_RELATIVE_INFLATE);
-            renderThickBoxEdges(pose, edgeConsumer, box, lineWidth, r, g, b, alpha);
-        }
+        // The overall bounding envelope, not shape.toAabbs()'s exact constituent boxes - a
+        // ceiling sensor's real shape is 11 separate boxes (a thin rim plus a raised interior),
+        // which traced a jagged multi-box outline instead of one clean box. Every other
+        // highlightable block's shape is already a single box, so this is a no-op difference for
+        // them - bounds() of one box is that box.
+        AABB box = shape.bounds().inflate(CALLER_INFLATE).move(highlightTarget);
+        boolean cameraInside = box.contains(cam);
+        box = box.inflate(cameraInside ? -CAMERA_RELATIVE_INFLATE : CAMERA_RELATIVE_INFLATE);
+        renderThickBoxEdges(pose, edgeConsumer, box, lineWidth, r, g, b, alpha);
         buffer.endBatch(EDGE_LIT);
 
         poseStack.popPose();
@@ -193,7 +198,7 @@ public class DKClientEvents {
     }
 
     @Nullable
-    private static BlockPos boundReaderPos(LocalPlayer player) {
+    private static BlockPos highlightTargetOf(LocalPlayer player) {
         BlockPos main = targetOf(player.getMainHandItem());
         if (main != null) {
             return main;
@@ -201,16 +206,25 @@ public class DKClientEvents {
         return targetOf(player.getOffhandItem());
     }
 
-    /** The reader a held {@link BoundSensorBlockItem} or {@link LinkedReaderBlockItem} is set to connect with, if any. */
+    /**
+     * The reader or sensor a held {@link BoundSensorBlockItem} or {@link LinkedReaderBlockItem}
+     * is set to connect with, if any.
+     */
     @Nullable
     private static BlockPos targetOf(ItemStack stack) {
         if (stack.getItem() instanceof BoundSensorBlockItem) {
-            return BoundSensorBlockItem.boundReader(stack);
+            BlockPos boundReader = BoundSensorBlockItem.boundReader(stack);
+            return boundReader != null ? boundReader : BoundSensorBlockItem.boundSensor(stack);
         }
         if (stack.getItem() instanceof LinkedReaderBlockItem) {
             return LinkedReaderBlockItem.linkedReader(stack);
         }
         return null;
+    }
+
+    /** Whether {@code block} is a valid highlight target: a card reader, or either kind of motion sensor. */
+    private static boolean isHighlightable(Block block) {
+        return block instanceof CardReaderBlock || block instanceof MotionSensorBlock;
     }
 
     /**

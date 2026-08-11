@@ -201,10 +201,10 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             if (!level.isClientSide) {
                 sensorItem.bindTo(stack, pos);
                 // white, not green: this only tunes the held item, the actual connection isn't
-                // "complete" (green) until it's placed - see AdvancedSensorBlockEntity#announcePlaced
+                // "complete" (green) until it's placed - see AdvancedSensorBlockEntity#announcePlaced.
+                // No sound here - only the completed connection plays one.
                 player.displayClientMessage(
                         Component.translatable("dynamickeycards.link_device.tuned").withStyle(ChatFormatting.WHITE), true);
-                DKSounds.confirm(level, pos);
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
@@ -215,10 +215,9 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         if (stack.getItem() instanceof LinkedReaderBlockItem readerItem) {
             if (!level.isClientSide) {
                 readerItem.linkTo(stack, pos);
-                // white, not green: see the sensor case above for why
+                // white, not green: see the sensor case above for why - no sound here either
                 player.displayClientMessage(
                         Component.translatable("dynamickeycards.link_device.tuned").withStyle(ChatFormatting.WHITE), true);
-                DKSounds.confirm(level, pos);
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
@@ -410,6 +409,16 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
      * (a level-wide, unattributed sound/event) same as {@link #tickPulseTimeout}'s release already does.
      */
     void acceptPulse(BlockState state, Level level, BlockPos pos, @Nullable Player player) {
+        acceptPulse(state, level, pos, player, false);
+    }
+
+    /**
+     * {@link #acceptPulse(BlockState, Level, BlockPos, Player)}, but also recording whether this
+     * rising edge came from an external driver (a bound advanced sensor) rather than a direct
+     * tap - see {@link CardReaderBlockEntity#isPulseExternallyOriginated} for why
+     * {@link #tickPulseTimeout} cares.
+     */
+    void acceptPulse(BlockState state, Level level, BlockPos pos, @Nullable Player player, boolean externallyOriginated) {
         CardReaderBlockEntity reader = level.getBlockEntity(pos) instanceof CardReaderBlockEntity r ? r : null;
         level.setBlock(pos, state.setValue(MODE, CardReaderMode.ACCEPTED).setValue(PRESSED, true), Block.UPDATE_ALL);
         this.updateNeighbors(state, level, pos);
@@ -418,7 +427,7 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             DKSounds.accept(level, pos);
         }
         if (reader != null) {
-            reader.onPulseStarted();
+            reader.onPulseStarted(externallyOriginated);
             // mirrors the accept pulse onto Create's Redstone Link network, if any
             reader.notifyLinkChanged();
         }
@@ -437,12 +446,32 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         };
     }
 
-    /** Ends the accept pulse once the reader's current pulse length has actually elapsed. */
+    /**
+     * Ends the accept pulse once it's no longer wanted - the only place that ever calls
+     * {@link #releasePulse}, so there's exactly one authority deciding when a pulse actually
+     * ends (a driving sensor only ever extends {@link CardReaderBlockEntity#holdExternalSignal}'s
+     * deadline, see {@code AdvancedSensorBlockEntity#tick}; it never releases the pulse itself).
+     * While a bound advanced sensor is still actively holding this pulse open (see
+     * {@link CardReaderBlockEntity#isExternallyHeld}), this reader's own timing is skipped
+     * entirely. Once that hold ends, what happens next depends on how this pulse started
+     * ({@link CardReaderBlockEntity#isPulseExternallyOriginated}): a sensor-started pulse
+     * releases immediately - the sensor's own hold delay already decided how long it should run,
+     * there's nothing left to wait on - while a directly-tapped one falls back to this reader's
+     * own configured length as always, even if a sensor happened to extend it along the way.
+     */
     private void tickPulseTimeout(Level level, BlockPos pos, BlockState state, CardReaderBlockEntity reader) {
         if (state.getValue(MODE) != CardReaderMode.ACCEPTED) {
             return;
         }
-        long elapsed = level.getGameTime() - reader.getPulseStartGameTime();
+        long now = level.getGameTime();
+        if (reader.isExternallyHeld(now)) {
+            return;
+        }
+        if (reader.isPulseExternallyOriginated()) {
+            releasePulse(state, level, pos);
+            return;
+        }
+        long elapsed = now - reader.getPulseStartGameTime();
         if (elapsed < reader.getSignalLength()) {
             return;
         }
