@@ -2,22 +2,16 @@ package com.mbx.dynamickeycards;
 
 import com.mbx.dynamickeycards.block.CardReaderBlock;
 import com.mbx.dynamickeycards.block.MotionSensorBlock;
+import com.mbx.dynamickeycards.client.BoxRenderUtil;
 import com.mbx.dynamickeycards.item.BoundSensorBlockItem;
 import com.mbx.dynamickeycards.item.LinkedReaderBlockItem;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
@@ -89,23 +83,8 @@ public class DKClientEvents {
     /** The camera-relative inflate magnitude - see {@link #CALLER_INFLATE}. */
     private static final float CAMERA_RELATIVE_INFLATE = 1 / 128f;
 
-    private static final ResourceLocation WHITE_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(DynamicKeycards.MOD_ID, "textures/misc/white.png");
-
-    /** Opaque, lit ({@code NEW_ENTITY} format + the vanilla entity-solid shader, real lightmap/overlay), textured with a blank white square. */
-    private static final RenderType EDGE_LIT = RenderType.create(
-            "dynamickeycards:sensor_outline_edges",
-            DefaultVertexFormat.NEW_ENTITY,
-            VertexFormat.Mode.QUADS,
-            256,
-            RenderType.CompositeState.builder()
-                    .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_SOLID_SHADER)
-                    .setTextureState(new RenderStateShard.TextureStateShard(WHITE_TEXTURE, false, false))
-                    .setCullState(RenderStateShard.CULL)
-                    .setLightmapState(RenderStateShard.LIGHTMAP)
-                    .setOverlayState(RenderStateShard.OVERLAY)
-                    .createCompositeState(false)
-    );
+    private static final RenderType EDGE_LIT =
+            BoxRenderUtil.opaqueLitBoxType("dynamickeycards:sensor_outline_edges", BoxRenderUtil.WHITE_TEXTURE);
 
     @Nullable
     private static BlockPos highlightTarget;
@@ -179,7 +158,7 @@ public class DKClientEvents {
         AABB box = shape.bounds().inflate(CALLER_INFLATE).move(highlightTarget);
         boolean cameraInside = box.contains(cam);
         box = box.inflate(cameraInside ? -CAMERA_RELATIVE_INFLATE : CAMERA_RELATIVE_INFLATE);
-        renderThickBoxEdges(pose, edgeConsumer, box, lineWidth, r, g, b, alpha);
+        BoxRenderUtil.renderThickBoxEdges(pose, edgeConsumer, box, lineWidth, r, g, b, alpha);
         buffer.endBatch(EDGE_LIT);
 
         poseStack.popPose();
@@ -225,87 +204,5 @@ public class DKClientEvents {
     /** Whether {@code block} is a valid highlight target: a card reader, or either kind of motion sensor. */
     private static boolean isHighlightable(Block block) {
         return block instanceof CardReaderBlock || block instanceof MotionSensorBlock;
-    }
-
-    /**
-     * The 12 edges of {@code box}, each as its own thin solid cuboid: three from the min corner,
-     * two each from three of the adjacent corners, one each from the remaining three.
-     */
-    private static void renderThickBoxEdges(PoseStack.Pose pose, VertexConsumer consumer, AABB box, float width,
-                                             float r, float g, float b, float alpha) {
-        float minX = (float) box.minX, minY = (float) box.minY, minZ = (float) box.minZ;
-        float maxX = (float) box.maxX, maxY = (float) box.maxY, maxZ = (float) box.maxZ;
-        float lenX = maxX - minX, lenY = maxY - minY, lenZ = maxZ - minZ;
-
-        bufferCuboidLine(pose, consumer, minX, minY, minZ, Direction.EAST, lenX, width, r, g, b, alpha);
-        bufferCuboidLine(pose, consumer, minX, minY, minZ, Direction.UP, lenY, width, r, g, b, alpha);
-        bufferCuboidLine(pose, consumer, minX, minY, minZ, Direction.SOUTH, lenZ, width, r, g, b, alpha);
-
-        bufferCuboidLine(pose, consumer, maxX, minY, minZ, Direction.UP, lenY, width, r, g, b, alpha);
-        bufferCuboidLine(pose, consumer, maxX, minY, minZ, Direction.SOUTH, lenZ, width, r, g, b, alpha);
-
-        bufferCuboidLine(pose, consumer, minX, maxY, minZ, Direction.EAST, lenX, width, r, g, b, alpha);
-        bufferCuboidLine(pose, consumer, minX, maxY, minZ, Direction.SOUTH, lenZ, width, r, g, b, alpha);
-
-        bufferCuboidLine(pose, consumer, minX, minY, maxZ, Direction.EAST, lenX, width, r, g, b, alpha);
-        bufferCuboidLine(pose, consumer, minX, minY, maxZ, Direction.UP, lenY, width, r, g, b, alpha);
-
-        bufferCuboidLine(pose, consumer, minX, maxY, maxZ, Direction.EAST, lenX, width, r, g, b, alpha);
-        bufferCuboidLine(pose, consumer, maxX, minY, maxZ, Direction.UP, lenY, width, r, g, b, alpha);
-        bufferCuboidLine(pose, consumer, maxX, maxY, minZ, Direction.SOUTH, lenZ, width, r, g, b, alpha);
-    }
-
-    /** A thin solid cuboid of cross-section {@code width} running {@code length} from {@code (ox,oy,oz)} toward {@code direction}. */
-    private static void bufferCuboidLine(PoseStack.Pose pose, VertexConsumer consumer, float ox, float oy, float oz,
-                                          Direction direction, float length, float width,
-                                          float r, float g, float b, float alpha) {
-        float half = width / 2f;
-        float minX = ox - half, minY = oy - half, minZ = oz - half;
-        float maxX = ox + half, maxY = oy + half, maxZ = oz + half;
-        switch (direction) {
-            case DOWN -> minY -= length;
-            case UP -> maxY += length;
-            case NORTH -> minZ -= length;
-            case SOUTH -> maxZ += length;
-            case WEST -> minX -= length;
-            case EAST -> maxX += length;
-        }
-        bufferCuboid(pose, consumer, minX, minY, minZ, maxX, maxY, maxZ, r, g, b, alpha);
-    }
-
-    /**
-     * A solid, lit box - six real quads with correct outward winding (culled backface-out), but
-     * every vertex gets the same fake {@code (0,1,0)} normal rather than its true one - see the
-     * class doc. The vertex color's alpha channel carries the fade value too: meaningless for
-     * vanilla's own opaque blending, but under a shader pack the replacement fragment shader
-     * still receives it and, on at least Bliss/Complementary Reimagined, visibly uses it - an
-     * earlier version that hardcoded this to 1 stayed pure white right up until the hard cutoff
-     * under those two, instead of darkening as it shrinks.
-     */
-    private static void bufferCuboid(PoseStack.Pose pose, VertexConsumer consumer,
-                                      float minX, float minY, float minZ, float maxX, float maxY, float maxZ,
-                                      float r, float g, float b, float alpha) {
-        litQuad(pose, consumer, minX, minY, maxZ, minX, minY, minZ, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, alpha); // down
-        litQuad(pose, consumer, minX, maxY, minZ, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ, r, g, b, alpha); // up
-        litQuad(pose, consumer, maxX, maxY, minZ, maxX, minY, minZ, minX, minY, minZ, minX, maxY, minZ, r, g, b, alpha); // north
-        litQuad(pose, consumer, minX, maxY, maxZ, minX, minY, maxZ, maxX, minY, maxZ, maxX, maxY, maxZ, r, g, b, alpha); // south
-        litQuad(pose, consumer, minX, maxY, minZ, minX, minY, minZ, minX, minY, maxZ, minX, maxY, maxZ, r, g, b, alpha); // west
-        litQuad(pose, consumer, maxX, maxY, maxZ, maxX, minY, maxZ, maxX, minY, minZ, maxX, maxY, minZ, r, g, b, alpha); // east
-    }
-
-    /** Full {@code NEW_ENTITY} quad (uv/overlay/lightmap/normal) with the shared fake "up" normal, for {@link #EDGE_LIT}. */
-    private static void litQuad(PoseStack.Pose pose, VertexConsumer consumer,
-                                 float x0, float y0, float z0, float x1, float y1, float z1,
-                                 float x2, float y2, float z2, float x3, float y3, float z3,
-                                 float r, float g, float b, float alpha) {
-        int light = LightTexture.FULL_BRIGHT;
-        consumer.addVertex(pose, x0, y0, z0).setColor(r, g, b, alpha).setUv(0, 0)
-                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 1, 0);
-        consumer.addVertex(pose, x1, y1, z1).setColor(r, g, b, alpha).setUv(0, 1)
-                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 1, 0);
-        consumer.addVertex(pose, x2, y2, z2).setColor(r, g, b, alpha).setUv(1, 1)
-                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 1, 0);
-        consumer.addVertex(pose, x3, y3, z3).setColor(r, g, b, alpha).setUv(1, 0)
-                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, 0, 1, 0);
     }
 }

@@ -50,28 +50,8 @@ public class LinkDeviceMenu extends AbstractContainerMenu {
 
         Container ghostContainer = new GhostFrequencyContainer(device);
         // matches the frequency #1 (red) / #2 (blue) slots in the screen's background art
-        this.addSlot(new Slot(ghostContainer, 0, 80, 25) {
-            @Override
-            public boolean mayPickup(Player player) {
-                return false;
-            }
-
-            @Override
-            public int getMaxStackSize() {
-                return 1;
-            }
-        });
-        this.addSlot(new Slot(ghostContainer, 1, 80, 43) {
-            @Override
-            public boolean mayPickup(Player player) {
-                return false;
-            }
-
-            @Override
-            public int getMaxStackSize() {
-                return 1;
-            }
-        });
+        this.addSlot(ghostSlot(ghostContainer, 0, 80, 25));
+        this.addSlot(ghostSlot(ghostContainer, 1, 80, 43));
 
         // matches LinkDeviceScreen's player-inventory panel: panel sits flush at local
         // x=0 with the main panel, slots are +8/+18 into it from there
@@ -83,6 +63,21 @@ public class LinkDeviceMenu extends AbstractContainerMenu {
         for (int col = 0; col < 9; col++) {
             this.addSlot(new Slot(playerInventory, col, 8 + col * 18, 179));
         }
+    }
+
+    /** A single-item ghost slot: never gives up what it holds, only ever mirrors it (see {@link #clicked}). */
+    private static Slot ghostSlot(Container container, int index, int x, int y) {
+        return new Slot(container, index, x, y) {
+            @Override
+            public boolean mayPickup(Player player) {
+                return false;
+            }
+
+            @Override
+            public int getMaxStackSize() {
+                return 1;
+            }
+        };
     }
 
     public LinkDeviceBlockEntity getDevice() {

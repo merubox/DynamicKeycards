@@ -2,7 +2,7 @@
 
 [한국어 버전 (Korean version)](MANUAL_KO.md)
 
-For version 0.1.6. Every interaction is a **right-click**; "sneak" means holding Shift.
+For version 0.1.7. Every interaction is a **right-click**; "sneak" means holding Shift.
 
 ---
 
@@ -77,6 +77,10 @@ Placeable on floors, walls, and ceilings.
 - Breaking a reader erases its binding and registrations.
 - The **Obsidian** reader has the same hardness and blast resistance as a vanilla
   obsidian block, and needs a diamond (or better) pickaxe.
+- While an accept signal is running, whoever could otherwise arm register mode
+  from idle (see the table below — the owner, a golden keycard holder, or a bound
+  estate keycard holder) can sneak to cut the signal short and arm register mode
+  immediately, instead of waiting for it to finish.
 
 ### Status lights
 | Light | Meaning |
@@ -119,22 +123,31 @@ Results are audible too: **pass = high bell**, **registered = bright pling**,
 | Sneaking + golden keycard (2nd) | **Full reset** — wipes every registered card ("Card reader has been reset") |
 
 ### Linking to another reader
-- Hold an unplaced reader and right-click an existing one to set it to link — the
-  item gets an enchant-glint shimmer and a white message confirms it ("Tuned to
-  that device"). Right-click empty air to cancel before placing it.
+- The target reader must be in register mode first (see the interaction table
+  above) - only its owner, or a golden/estate keycard holder acting on the
+  owner's behalf, can arm that, so this is what stops anyone from linking a
+  device to a reader they don't have that kind of access to.
+- Hold an unplaced reader and right-click the register-mode reader to set it to
+  link — the item gets an enchant-glint shimmer and a white message confirms
+  it ("Tuned to that device"). Right-click empty air to cancel before placing
+  it.
 - Place it: the connection completes ("Connected to the existing device", green),
   and a white outline highlights the connected reader for as long as you're
-  holding a reader (or sensor) set to connect to it. The same gesture links an
-  advanced sensor to a reader too — see §4.
-- Once linked (it's mutual — both readers point at each other), each reader
-  accepts a card the moment it's registered on **either** reader, and honors a
-  card blocked on either too.
+  holding a reader (or sensor) set to connect to it. The same gesture (and the
+  same register-mode requirement) links an advanced sensor to a reader too —
+  see §4.
+- A reader can be linked to more than one other reader - each new link adds to
+  the group rather than replacing an existing one. Every reader in the whole
+  connected group (a simple pair, a longer chain, a star, however it's shaped)
+  accepts a card the moment it's registered **anywhere** in that group, and
+  honors a card blocked anywhere in it too - not just its own direct link.
 - Everything else about each reader stays independent: owner, register mode,
   signal mode/frequency, signal length. You still register or remove a card at
   one specific reader — linking only changes which cards each reader *accepts*,
   not where you manage them.
 - There's currently no way to unlink two already-placed readers — only cancel
-  before placing, by right-clicking empty air with the unplaced item.
+  before placing, by right-clicking empty air with the unplaced item. Breaking
+  a linked reader does remove it from its former group entirely.
 
 ---
 
@@ -204,8 +217,9 @@ opens outward in the direction it was placed; a ceiling sensor mounts flush on a
 ceiling block and is fully symmetric (no facing).
 
 ### Basics
-- Detects living entities (mobs, players — spectators don't count) in its own cell
-  and the cell directly below.
+- Detects living entities (mobs, players — spectators don't count) in its
+  **detection range** — its own cell and the cell directly below, customizable
+  on the advanced tier (see below).
 - Outputs a **continuous** redstone signal (strength 15, strongly powering the
   mounting face) that tracks detection directly — it stays on for as long as
   something's there, rather than running for a fixed length once triggered like a
@@ -214,8 +228,30 @@ ceiling block and is fully symmetric (no facing).
   the last detection (0 ticks cuts it the instant nothing's left). Same adjustment
   screen as a reader's signal length — see the Create notes in §6.
 - **No ownership** — anyone can configure or pick one up.
-- Breaking a sensor loses its configuration (and, for the advanced tier, its binding
-  and color too).
+- Breaking a sensor loses its configuration (range, release delay, and, for the
+  advanced tier, its binding and color too).
+
+### Adjusting the detection range (advanced sensors only)
+- Right-click a placed advanced sensor with redstone dust to arm range editing — free, no
+  dust consumed. A red-edged box appears around its current detection range,
+  visible only while you're holding that same redstone dust stack.
+- **Ctrl+scroll** while looking at the box grows or shrinks it one cell at a time,
+  toward whichever face of the box you're looking at.
+- **Right-click again** (same redstone, while looking at the box) confirms the new
+  range — this consumes 1 redstone dust, but only if the range actually changed.
+- **Left-click** while looking at the box cancels instead, no dust consumed.
+- The maximum reach is a **3×3×3 volume** — any smaller box inside it is fine too,
+  it doesn't have to include the sensor's own cell:
+  - **Ceiling sensor**: a 3×3×3 cube centered on the sensor horizontally, with the
+    sensor's own cell as its top layer, reaching 2 cells straight down from there.
+  - **Wall sensor**: the same 3×3×3 shape anchored to the wall instead — 2 cells
+    outward from the mounted wall (never back through it), 2 cells straight down,
+    and 1 cell to either side of the sensor.
+- Picking up a redstone dust stack that's already armed for a different sensor and
+  using it on a new one cancels the old edit and arms the new one automatically.
+- Right-clicking a sensor whose range editing is already armed (with any redstone
+  dust) shows a reminder instead of doing nothing — right-click it with an empty
+  hand to reset.
 
 ### Advanced sensors: binding to a reader
 - Hold an unplaced advanced sensor and right-click an existing card reader to bind

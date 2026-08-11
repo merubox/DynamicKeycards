@@ -1,6 +1,7 @@
 package com.mbx.dynamickeycards.block;
 
 import com.mojang.serialization.MapCodec;
+import com.mbx.dynamickeycards.DKMessages;
 import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.DKTooltips;
 import com.mbx.dynamickeycards.item.BlankKeycardItem;
@@ -235,7 +236,7 @@ public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock 
     }
 
     private static void message(Player player, String key, ChatFormatting color) {
-        player.displayClientMessage(Component.translatable("dynamickeycards.card_duplicator." + key).withStyle(color), true);
+        DKMessages.actionBar(player, "dynamickeycards.card_duplicator." + key, color);
     }
 
     @Override

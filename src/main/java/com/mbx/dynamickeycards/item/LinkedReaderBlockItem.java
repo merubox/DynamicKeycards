@@ -1,5 +1,7 @@
 package com.mbx.dynamickeycards.item;
 
+import com.mbx.dynamickeycards.DKMessages;
+import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.registry.DKComponents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -10,9 +12,12 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 /**
  * The item form of a card reader, before it's ever placed. Right-clicking an existing reader
@@ -45,6 +50,21 @@ public class LinkedReaderBlockItem extends BlockItem {
         return linkedReader(stack) != null;
     }
 
+    /**
+     * Same "Device linked" line {@code BoundSensorBlockItem} shows once tuned - this item only
+     * had the foil shimmer for that before, with no text explaining it. The rest of the tooltip
+     * ({@code card_reader1/2/3}, wrench pickup) comes from {@code CardReaderBlock}'s own
+     * {@code appendHoverText}, which {@link BlockItem}'s default already delegates to - so this
+     * only needs to add the one extra line, not duplicate the block's summary keys.
+     */
+    @Override
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+        if (linkedReader(stack) != null) {
+            tooltip.add(Component.translatable("dynamickeycards.tooltip.device_linked").withStyle(ChatFormatting.DARK_GRAY));
+        }
+        super.appendHoverText(stack, context, tooltip, flag);
+    }
+
     /** Right-clicking empty air while already set to link clears it. */
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
@@ -54,8 +74,8 @@ public class LinkedReaderBlockItem extends BlockItem {
         }
         if (!level.isClientSide) {
             stack.remove(DKComponents.LINKED_READER.get());
-            player.displayClientMessage(
-                    Component.translatable("dynamickeycards.link_device.cancelled").withStyle(ChatFormatting.WHITE), true);
+            DKMessages.actionBar(player, "dynamickeycards.link_device.cancelled", ChatFormatting.WHITE);
+            DKSounds.remove(level, player.blockPosition());
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }

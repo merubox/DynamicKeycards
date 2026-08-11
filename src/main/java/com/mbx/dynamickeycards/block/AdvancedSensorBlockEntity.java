@@ -16,7 +16,6 @@ import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.UnaryOperator;
@@ -201,11 +200,6 @@ public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity {
         }
     }
 
-    /** Same column as {@link MotionSensorBlock#detectionZone} - this block's own cell and the one below it. */
-    private static AABB detectionZone(BlockPos pos) {
-        return new AABB(pos.getX(), pos.getY() - 1, pos.getZ(), pos.getX() + 1.0, pos.getY() + 1.0, pos.getZ() + 1.0);
-    }
-
     private static boolean carriesAcceptedCard(Player player, CardReaderBlockEntity reader) {
         Inventory inventory = player.getInventory();
         for (int i = 0; i < inventory.getContainerSize(); i++) {
@@ -231,7 +225,19 @@ public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity {
     private static void tickBoundToReader(Level level, BlockPos pos, BlockState state, AdvancedSensorBlockEntity be, BlockPos readerPos) {
         long now = level.getGameTime();
         CardReaderBlockEntity reader = level.getBlockEntity(readerPos) instanceof CardReaderBlockEntity r ? r : null;
-        boolean detected = reader != null && !level.getEntitiesOfClass(Player.class, detectionZone(pos),
+        // register mode is the owner mid-administration on the reader this sensor is bound to -
+        // while bound to a reader, this sensor's whole purpose is detecting cards *for* it, so the
+        // bound unit pauses together rather than just the push into the reader: no detection, no
+        // local light either (own external hold, if anything else is separately driving *this*
+        // sensor, still applies - see MotionSensorBlockEntity#holdExternalSignal). Cutting the
+        // instant register mode starts, rather than riding out an already-running hold window,
+        // matches how armRegisterMode cuts an in-progress accept pulse short instead of waiting it
+        // out - see CardReaderBlock#armRegisterMode.
+        if (reader != null && reader.isRegisterMode()) {
+            applyPresent(level, pos, state, be, be.isExternallyHeld(now));
+            return;
+        }
+        boolean detected = reader != null && !level.getEntitiesOfClass(Player.class, be.detectionZone(pos),
                 player -> !player.isSpectator() && carriesAcceptedCard(player, reader)).isEmpty();
         if (detected) {
             be.lastCardDetectedGameTime = now;

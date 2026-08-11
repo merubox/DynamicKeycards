@@ -120,11 +120,13 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             reader.setOwner(player.getUUID());
         }
         // if this reader item was set to link with an existing one (see LinkedReaderBlockItem),
-        // point both readers at each other now that this one actually exists in the world
+        // point both readers at each other now that this one actually exists in the world - adds
+        // to each reader's own set of links rather than replacing it, so linking a third reader
+        // to an already-linked one extends the group instead of severing its existing link
         BlockPos linkTarget = LinkedReaderBlockItem.linkedReader(stack);
         if (linkTarget != null && level.getBlockEntity(linkTarget) instanceof CardReaderBlockEntity target) {
-            reader.setLinkedReader(linkTarget);
-            target.setLinkedReader(pos);
+            reader.addLinkedReader(linkTarget);
+            target.addLinkedReader(pos);
             if (placer instanceof Player player) {
                 // green: unlike the white "tuned" message shown when the item was set to link,
                 // this is the point the link actually exists
@@ -138,7 +140,10 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
     /**
      * Bare-hand interaction. With register mode active, any bare-hand click (owner or not,
      * sneaking or not) cancels it; otherwise sneaking either arms register mode (owner) or
-     * reports the reader as not bound (everyone else), and standing clicks do nothing.
+     * reports the reader as not bound (everyone else), and standing clicks do nothing. The owner
+     * can arm register mode regardless of what the reader's doing right now - including cutting
+     * an in-progress accept signal short (see {@link #armRegisterMode}) - rather than having to
+     * wait out an active signal or a denied flash first.
      */
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
@@ -153,9 +158,6 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         }
         if (!player.isShiftKeyDown()) {
             return InteractionResult.PASS;
-        }
-        if (state.getValue(MODE) != CardReaderMode.OFF) {
-            return InteractionResult.CONSUME;
         }
         if (!level.isClientSide) {
             if (reader.isOwner(player)) {
@@ -197,9 +199,27 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         // Advanced sensor item, still unplaced: binds it to this reader instead of any of the
         // usual keycard/wrench handling below - handled here rather than the item's own useOn so
         // it isn't swallowed by the SKIP_DEFAULT_BLOCK_INTERACTION fallback a few lines down.
+        // Only while register mode is armed - the same gate registering/removing a card already
+        // requires, and since only the owner can arm it (see armRegisterMode), this doubles as
+        // the owner's consent to let something bind to their reader at all. Without this, anyone
+        // could quietly bind their own sensor or reader to someone else's, any time, unnoticed.
         if (stack.getItem() instanceof BoundSensorBlockItem sensorItem) {
+            if (!(level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader) || !reader.isRegisterMode()) {
+                if (!level.isClientSide) {
+                    player.displayClientMessage(
+                            Component.translatable("dynamickeycards.link_device.needs_register_mode").withStyle(ChatFormatting.RED), true);
+                    DKSounds.deny(level, pos);
+                }
+                return ItemInteractionResult.sidedSuccess(level.isClientSide);
+            }
             if (!level.isClientSide) {
                 sensorItem.bindTo(stack, pos);
+                // one register-mode arming grants exactly one tuning, same as one card
+                // registration - otherwise leaving register mode armed (nothing here times it
+                // out) would let every stranger who walks up before it's cancelled tune their own
+                // device to this reader, one after another
+                reader.setRegisterMode(false);
+                setMode(level, pos, state, CardReaderMode.OFF);
                 // white, not green: this only tunes the held item, the actual connection isn't
                 // "complete" (green) until it's placed - see AdvancedSensorBlockEntity#announcePlaced.
                 // No sound here - only the completed connection plays one.
@@ -209,12 +229,24 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
         // Reader item, still unplaced: sets it to link with this reader instead of any of the
-        // usual keycard/wrench handling below - same reasoning as the sensor case above. Linking
-        // only shares registered/blocked cards (see CardReaderBlockEntity#accepts) - each reader
-        // keeps its own owner, mode/frequency, and pulse.
+        // usual keycard/wrench handling below - same reasoning and the same register-mode gate
+        // as the sensor case above. Linking only shares registered/blocked cards (see
+        // CardReaderBlockEntity#accepts) - each reader keeps its own owner, mode/frequency, and
+        // pulse.
         if (stack.getItem() instanceof LinkedReaderBlockItem readerItem) {
+            if (!(level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader) || !reader.isRegisterMode()) {
+                if (!level.isClientSide) {
+                    player.displayClientMessage(
+                            Component.translatable("dynamickeycards.link_device.needs_register_mode").withStyle(ChatFormatting.RED), true);
+                    DKSounds.deny(level, pos);
+                }
+                return ItemInteractionResult.sidedSuccess(level.isClientSide);
+            }
             if (!level.isClientSide) {
                 readerItem.linkTo(stack, pos);
+                // one register-mode arming grants exactly one tuning - see the sensor case above
+                reader.setRegisterMode(false);
+                setMode(level, pos, state, CardReaderMode.OFF);
                 // white, not green: see the sensor case above for why - no sound here either
                 player.displayClientMessage(
                         Component.translatable("dynamickeycards.link_device.tuned").withStyle(ChatFormatting.WHITE), true);
@@ -362,16 +394,20 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
-        if (state.getValue(MODE) != CardReaderMode.OFF) {
-            return ItemInteractionResult.CONSUME;
-        }
+        // sneaking arms register mode regardless of what's happening right now - armRegisterMode
+        // itself cuts an in-progress accept signal short rather than making the owner wait it
+        // out. Standing still only passes while idle - re-tapping mid-signal or mid-denial stays
+        // a no-op, same as ever.
         if (sneaking) {
             if (!level.isClientSide) {
                 armRegisterMode(level, pos, state, reader, player);
             }
-        } else {
-            this.acceptPulse(state, level, pos, player);
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
+        if (state.getValue(MODE) != CardReaderMode.OFF) {
+            return ItemInteractionResult.CONSUME;
+        }
+        this.acceptPulse(state, level, pos, player);
         return ItemInteractionResult.sidedSuccess(level.isClientSide);
     }
 
@@ -496,7 +532,19 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         }
     }
 
+    /**
+     * Arms register mode regardless of what the reader is currently doing - if an accept signal
+     * is actively running ({@link CardReaderMode#ACCEPTED}), it's cut short first ({@link #releasePulse}
+     * itself, same as it ending on its own: click-off sound, redstone drop, everything), rather
+     * than making the owner wait it out before they can start managing cards. A denied flash
+     * needs no such handling - it never carries a live signal to begin with (see
+     * {@link #tickPulseTimeout}) - so it's overwritten the same way {@link CardReaderMode#OFF} is.
+     */
     private void armRegisterMode(Level level, BlockPos pos, BlockState state, CardReaderBlockEntity reader, Player player) {
+        if (state.getValue(MODE) == CardReaderMode.ACCEPTED) {
+            releasePulse(state, level, pos);
+            state = level.getBlockState(pos);
+        }
         reader.setRegisterMode(true);
         setMode(level, pos, state, CardReaderMode.REGISTER);
         message(player, "register_prompt", ChatFormatting.WHITE);
@@ -522,6 +570,16 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
         if (moved || state.is(newState.getBlock())) {
             return;
+        }
+        // tell every reader this one was linked to that the link is gone - otherwise a stale
+        // position lingers in their own set, and if a different, unrelated reader ever gets
+        // placed at this same spot later, it'd be silently pulled into their group from one side
+        if (!level.isClientSide && level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader) {
+            for (BlockPos linkedPos : reader.getLinkedReaders()) {
+                if (level.getBlockEntity(linkedPos) instanceof CardReaderBlockEntity linked) {
+                    linked.removeLinkedReader(pos);
+                }
+            }
         }
         if (state.getValue(PRESSED)) {
             this.updateNeighbors(state, level, pos);

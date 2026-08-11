@@ -5,6 +5,7 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -157,6 +158,10 @@ public class CeilingSensorBlock extends Block implements EntityBlock, MotionSens
             if (bindResult != null) {
                 return bindResult;
             }
+            ItemInteractionResult rangeResult = tryRangeEditInteraction(stack, level, pos, player);
+            if (rangeResult != null) {
+                return rangeResult;
+            }
         }
         if (stack.isEmpty() || !CreateLinkCompat.isLoaded() || !stack.is(Tags.Items.TOOLS_WRENCH)) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
@@ -168,5 +173,14 @@ public class CeilingSensorBlock extends Block implements EntityBlock, MotionSens
             return wrenchPickup(state, level, pos, player, sensor);
         }
         return openLinkDeviceMenu(state, level, pos, player, sensor);
+    }
+
+    /** Bare-hand click cancels an armed range edit - see {@link #tryCancelRangeEdit}. */
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        if (tryCancelRangeEdit(level, pos, player)) {
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
+        return super.useWithoutItem(state, level, pos, player, hit);
     }
 }

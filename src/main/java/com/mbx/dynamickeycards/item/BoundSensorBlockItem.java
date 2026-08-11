@@ -1,5 +1,7 @@
 package com.mbx.dynamickeycards.item;
 
+import com.mbx.dynamickeycards.DKMessages;
+import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.DKTooltips;
 import com.mbx.dynamickeycards.registry.DKComponents;
 import net.minecraft.ChatFormatting;
@@ -65,7 +67,7 @@ public class BoundSensorBlockItem extends SensorBlockItem {
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         if (boundReader(stack) != null || boundSensor(stack) != null) {
-            tooltip.add(Component.translatable("dynamickeycards.tooltip.advanced_sensor_bound").withStyle(ChatFormatting.DARK_GRAY));
+            tooltip.add(Component.translatable("dynamickeycards.tooltip.device_linked").withStyle(ChatFormatting.DARK_GRAY));
         }
         DKTooltips.summary(tooltip, "sensor1", "sensor2", "sensor_wrench_pickup", "advanced_sensor1", "advanced_sensor2");
     }
@@ -91,8 +93,8 @@ public class BoundSensorBlockItem extends SensorBlockItem {
         if (!level.isClientSide) {
             stack.remove(DKComponents.BOUND_READER.get());
             stack.remove(DKComponents.BOUND_SENSOR.get());
-            player.displayClientMessage(
-                    Component.translatable("dynamickeycards.link_device.cancelled").withStyle(ChatFormatting.WHITE), true);
+            DKMessages.actionBar(player, "dynamickeycards.link_device.cancelled", ChatFormatting.WHITE);
+            DKSounds.remove(level, player.blockPosition());
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }

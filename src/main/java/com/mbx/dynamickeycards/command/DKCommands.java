@@ -55,11 +55,10 @@ public class DKCommands {
             throw ALREADY_OWNER.create();
         }
         reader.setOwner(target.getUUID());
-        ServerPlayer executor = player;
         source.sendSuccess(
                 () -> Component.translatable("dynamickeycards.command.transfer.success", target.getName()), true);
         target.displayClientMessage(
-                Component.translatable("dynamickeycards.command.transfer.received", executor.getName()), false);
+                Component.translatable("dynamickeycards.command.transfer.received", player.getName()), false);
         return 1;
     }
 }

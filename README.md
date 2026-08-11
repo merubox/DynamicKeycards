@@ -48,9 +48,10 @@ On top of that:
   another sensor instead (one-directional onto a plain one, mutual between two
   advanced ones), and can be dyed to match your build, reset with a gold nugget.
 - **Devices can link to each other** — hold an unplaced reader (or a sensor set to
-  bind) and right-click an existing reader to connect them. Linked readers accept a
-  card the moment it's registered on either one; everything else about each device
-  stays fully independent.
+  bind) and right-click a reader in register mode to connect them. A reader can be
+  linked to more than one other, and the whole connected group accepts a card the
+  moment it's registered anywhere in it; everything else about each device stays
+  fully independent.
 
 ## Integrations (all optional)
 
@@ -88,6 +89,7 @@ Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, 
 | 0.1.4 | Pulse length adjustment UI, Link Mode rename, wrench-pickup confirmation step |
 | 0.1.5 | Sensors (wall/ceiling, plain & advanced), advanced-sensor↔reader binding + dyeing, reader-to-reader linking, Mixed Mode |
 | 0.1.6 | Sensor-to-sensor binding, connections survive Create schematics/contraptions, quieter connection sounds |
+| 0.1.7 | Readers can link to more than one other reader, linking requires register mode, link cleanup on break, interruptible register mode, customizable detection range for advanced sensors |
 
 ## Requirements
 

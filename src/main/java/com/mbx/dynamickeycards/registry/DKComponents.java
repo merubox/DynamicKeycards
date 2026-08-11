@@ -95,4 +95,19 @@ public class DKComponents {
                     .persistent(BlockPos.CODEC)
                     .networkSynchronized(BlockPos.STREAM_CODEC)
                     .build());
+
+    /**
+     * The sensor a redstone dust stack armed a range edit on (set by right-clicking it, see
+     * {@code MotionSensorBlock#tryRangeEditInteraction}; cleared on confirm/cancel, see
+     * {@code DKNetwork#handleCommit}) - alongside {@link net.minecraft.core.component.DataComponents#ENCHANTMENT_GLINT_OVERRIDE}
+     * marking that stack as spoken for. Client-side, this is what the highlight's visibility
+     * actually keys off (see {@code SensorRangeClientHandler}) - not proximity or where the
+     * cursor is pointing, same as {@link #BOUND_READER}/{@link #LINKED_READER} already drive
+     * their own held-item highlight in {@code DKClientEvents}.
+     */
+    public static final Supplier<DataComponentType<BlockPos>> RANGE_EDIT_TARGET = COMPONENTS.register("range_edit_target",
+            () -> DataComponentType.<BlockPos>builder()
+                    .persistent(BlockPos.CODEC)
+                    .networkSynchronized(BlockPos.STREAM_CODEC)
+                    .build());
 }

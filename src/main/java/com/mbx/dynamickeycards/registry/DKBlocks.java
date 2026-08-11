@@ -16,8 +16,11 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.neoforge.registries.DeferredBlock;
+import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BiFunction;
 
 /**
@@ -26,6 +29,19 @@ import java.util.function.BiFunction;
  */
 public class DKBlocks {
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(DynamicKeycards.MOD_ID);
+
+    /**
+     * Every block's item form, in declaration order - {@link DKCreativeTabs} reads this instead
+     * of listing each block a second time by hand, so a block registered here but left off that
+     * separate list can't silently just never show up in the creative tab. Kept apart from
+     * {@link DKItems#TAB_ITEMS} (rather than appending directly into that one shared list) since
+     * registering a block here is what first triggers {@code DKItems} to class-load at all (see
+     * {@link #register(String, java.util.function.Supplier, BiFunction)}) - by the time control
+     * returns here, all of {@code DKItems}' own entries already exist, so appending into its list
+     * would always land after every card regardless of which block triggered it, silently
+     * reordering the tab. Two lists read in a fixed order avoids depending on this at all.
+     */
+    public static final List<DeferredItem<Item>> TAB_BLOCKS = new ArrayList<>();
 
     public static final DeferredBlock<Block> INSERT_CARD_READER = registerReader("insert_card_reader");
     public static final DeferredBlock<Block> TOUCH_CARD_READER = registerReader("touch_card_reader");
@@ -63,7 +79,7 @@ public class DKBlocks {
     private static DeferredBlock<Block> register(String name, java.util.function.Supplier<Block> factory,
                                                    BiFunction<Block, Item.Properties, ? extends BlockItem> itemFactory) {
         DeferredBlock<Block> block = BLOCKS.register(name, factory);
-        DKItems.ITEMS.register(name, () -> itemFactory.apply(block.get(), new Item.Properties()));
+        TAB_BLOCKS.add(DKItems.ITEMS.register(name, () -> itemFactory.apply(block.get(), new Item.Properties())));
         return block;
     }
 

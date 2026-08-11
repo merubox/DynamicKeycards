@@ -4,6 +4,39 @@
 
 All notable changes to Dynamic Keycards are documented here.
 
+## 0.1.7
+
+### Added
+- A card reader can now be linked to more than one other reader at once. Cards
+  registered anywhere in the whole connected group (chain, star, or otherwise)
+  are accepted at every reader in it, not just direct neighbors.
+- Sneaking while holding your own keycard (or the golden keycard, or your
+  bound estate keycard) now interrupts an in-progress accept signal and enters
+  register mode immediately, instead of having to wait for the signal to end.
+- **Advanced sensors now have a customizable detection range.** Right-click a
+  placed one with redstone dust to start adjusting it, Ctrl+scroll while
+  looking at the highlighted box to resize it, then right-click again to
+  confirm (or left-click to cancel). See the manual for the full range and
+  controls.
+
+### Fixed
+- Linking a third reader to an already-linked pair used to silently break the
+  existing link.
+- Linking a reader or sensor to an existing reader now requires that reader to
+  be in register mode.
+- Breaking a linked reader now removes it from every reader it was linked to.
+- Register mode used to stay armed indefinitely after tuning a device
+  connection (binding a sensor, or linking two readers); it now exits the
+  moment a connection is tuned, the same way card registration already did.
+- A sensor bound to a reader could still trigger the reader's accept signal
+  remotely while that reader was in register mode, showing an idle reader
+  next to an active connection; the whole bound sensor now pauses while its
+  target reader is in register mode.
+- The reader-linking item was missing the "Device linked" tooltip line the
+  sensor-binding item already had.
+- Cancelling a pending reader/sensor connection by right-clicking with an
+  empty hand now plays a sound, matching every other cancel action.
+
 ## 0.1.6
 
 ### Added

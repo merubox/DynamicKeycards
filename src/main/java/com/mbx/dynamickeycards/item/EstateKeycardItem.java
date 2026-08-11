@@ -1,5 +1,6 @@
 package com.mbx.dynamickeycards.item;
 
+import com.mbx.dynamickeycards.DKMessages;
 import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.DKTooltips;
 import com.mbx.dynamickeycards.registry.DKComponents;
@@ -69,7 +70,7 @@ public class EstateKeycardItem extends KeycardItem {
     }
 
     private static void message(Player player, String key, ChatFormatting color, Object... args) {
-        player.displayClientMessage(Component.translatable("dynamickeycards.estate." + key, args).withStyle(color), true);
+        DKMessages.actionBar(player, "dynamickeycards.estate." + key, color, args);
     }
 
     @Override

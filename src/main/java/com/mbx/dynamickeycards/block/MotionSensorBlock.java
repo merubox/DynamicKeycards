@@ -3,13 +3,17 @@ package com.mbx.dynamickeycards.block;
 import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.item.BoundSensorBlockItem;
 import com.mbx.dynamickeycards.registry.DKBlockEntities;
+import com.mbx.dynamickeycards.registry.DKComponents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -17,7 +21,6 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -33,11 +36,6 @@ public interface MotionSensorBlock {
 
     /** Direction pointing away from this sensor's mounting surface, into open space. */
     Direction openDirection(BlockState state);
-
-    /** Column scanned for entities: this block's own cell and the one directly below it. */
-    default AABB detectionZone(BlockPos pos) {
-        return new AABB(pos.getX(), pos.getY() - 1, pos.getZ(), pos.getX() + 1.0, pos.getY() + 1.0, pos.getZ() + 1.0);
-    }
 
     default BlockEntity newMotionSensorBlockEntity(BlockPos pos, BlockState state) {
         return new MotionSensorBlockEntity(pos, state);
@@ -100,5 +98,128 @@ public interface MotionSensorBlock {
                     Component.translatable("dynamickeycards.link_device.tuned").withStyle(ChatFormatting.WHITE), true);
         }
         return ItemInteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    /**
+     * A held redstone dust right-clicking this sensor arms a range edit - {@code null} if
+     * {@code stack} isn't redstone dust or this isn't an advanced sensor ({@link AdvancedSensorDyeing}),
+     * same "not applicable" convention as {@link #tryBindItemInteraction}. Plain sensors keep
+     * their fixed column forever - the envelope range editing opens up is only worth the extra
+     * interaction on the tier that's already asking for more setup (binding, dyeing) anyway.
+     * Free (nothing consumed, nothing changes yet - see
+     * {@code MotionSensorBlockEntity#enterRangeEdit}) and marks the stack with an enchant glint
+     * (see {@link DataComponents#ENCHANTMENT_GLINT_OVERRIDE}) so it reads as "this dust is
+     * spoken for" - cleared again on confirm/cancel, see {@code DKNetwork#handleCommit}. Once
+     * already armed, this does nothing further - confirming/cancelling now happens by clicking
+     * the highlight itself (see {@code SensorRangeClientHandler#onClickInput}), not by
+     * re-clicking the block, so a second right-click here is just swallowed (rather than falling
+     * through to placing a redstone wire on top of the sensor).
+     *
+     * <p>A sensor currently bound to a reader can only be edited while that reader is in
+     * register mode - the same consent gate linking a new device to a reader already requires
+     * (see {@code CardReaderBlock#useItemOn}), checked again here since changing a bound
+     * sensor's range changes what the reader effectively reacts to, same as a bind would.
+     *
+     * <p>If {@code stack} is already tagged for a <em>different</em> sensor that's still armed,
+     * that one is cancelled first (a clean handoff) rather than just overwriting the tag and
+     * leaving it silently stuck in edit mode forever - nothing else would ever tell it to stop,
+     * since the only thing tracking it (the tag) just moved elsewhere. Silent on purpose - no
+     * message, no sound - since this is one continuous action from the player's own perspective
+     * (moving on to the next sensor), not two: the old sensor's cancel sound and the new one's
+     * arm sound firing back to back read as a jarring overlap rather than a single action.
+     *
+     * <p>If {@code sensor} is already armed (whether by this stack or a lost/orphaned one from
+     * before this handoff existed), this just tells the player how to get it unstuck rather than
+     * silently doing nothing - there's no redstone in hand that still points at it once the tag's
+     * gone, so the normal handoff above can't reach it either.
+     */
+    @Nullable
+    default ItemInteractionResult tryRangeEditInteraction(ItemStack stack, Level level, BlockPos pos, Player player) {
+        if (!stack.is(Items.REDSTONE) || !(this instanceof AdvancedSensorDyeing)
+                || !(level.getBlockEntity(pos) instanceof MotionSensorBlockEntity sensor)) {
+            return null;
+        }
+        if (sensor.isRangeEditMode()) {
+            if (!level.isClientSide) {
+                player.displayClientMessage(
+                        Component.translatable("dynamickeycards.sensor.range_already_editing").withStyle(ChatFormatting.RED), true);
+                DKSounds.deny(level, pos);
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+        if (!canEditRange(level, sensor)) {
+            if (!level.isClientSide) {
+                player.displayClientMessage(
+                        Component.translatable("dynamickeycards.link_device.needs_register_mode").withStyle(ChatFormatting.RED), true);
+                DKSounds.deny(level, pos);
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+        if (!level.isClientSide) {
+            BlockPos previousTarget = stack.get(DKComponents.RANGE_EDIT_TARGET.get());
+            if (previousTarget != null && !previousTarget.equals(pos)
+                    && level.getBlockEntity(previousTarget) instanceof MotionSensorBlockEntity previousSensor
+                    && previousSensor.isRangeEditMode()) {
+                previousSensor.cancelRangeEdit();
+            }
+            sensor.enterRangeEdit();
+            stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+            stack.set(DKComponents.RANGE_EDIT_TARGET.get(), pos);
+            player.displayClientMessage(
+                    Component.translatable("dynamickeycards.sensor.range_edit_prompt").withStyle(ChatFormatting.WHITE), true);
+            DKSounds.arm(level, pos);
+        }
+        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    /**
+     * Any bare-hand click while a range edit is armed cancels it, same convention as
+     * {@code CardReaderBlock}'s register mode cancel - a redundant fallback alongside the
+     * primary click-the-highlight cancel (see {@code SensorRangeClientHandler#onClickInput}).
+     * Clears the armed dust's glint/target marker wherever it actually is in the player's
+     * inventory (see {@link #clearRangeEditMarkers}), not just the hand that triggered this -
+     * a bare-hand click by definition isn't holding it, and even a held-item cancel could come
+     * from whichever hand doesn't have it. {@code false} if there was nothing to cancel, so the
+     * caller can fall through to whatever bare-hand behavior it would otherwise have.
+     */
+    default boolean tryCancelRangeEdit(Level level, BlockPos pos, Player player) {
+        if (!(level.getBlockEntity(pos) instanceof MotionSensorBlockEntity sensor) || !sensor.isRangeEditMode()) {
+            return false;
+        }
+        if (!level.isClientSide) {
+            sensor.cancelRangeEdit();
+            clearRangeEditMarkers(player, pos);
+            player.displayClientMessage(
+                    Component.translatable("dynamickeycards.sensor.range_cancelled").withStyle(ChatFormatting.WHITE), true);
+            DKSounds.remove(level, pos);
+        }
+        return true;
+    }
+
+    /** Whether {@code sensor} is currently allowed to have its range edited - see {@link #tryRangeEditInteraction}. */
+    static boolean canEditRange(Level level, MotionSensorBlockEntity sensor) {
+        if (!(sensor instanceof AdvancedSensorBlockEntity advanced) || advanced.getBoundReader() == null) {
+            return true;
+        }
+        return level.getBlockEntity(advanced.getBoundReader()) instanceof CardReaderBlockEntity reader && reader.isRegisterMode();
+    }
+
+    /**
+     * Clears the enchant glint + {@link DKComponents#RANGE_EDIT_TARGET} marker from wherever in
+     * {@code player}'s whole inventory a redstone dust stack is currently tagged for {@code pos} -
+     * not just whichever hand triggered the cancel/confirm, since that might not be the same hand
+     * (or even still a hand at all - a bare-hand cancel, or cancelling/confirming with the tagged
+     * dust in the *other* hand) that originally armed it. Used by both {@link #tryCancelRangeEdit}
+     * and {@code DKNetwork#handleCommit}.
+     */
+    static void clearRangeEditMarkers(Player player, BlockPos pos) {
+        Inventory inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (stack.is(Items.REDSTONE) && pos.equals(stack.get(DKComponents.RANGE_EDIT_TARGET.get()))) {
+                stack.remove(DataComponents.ENCHANTMENT_GLINT_OVERRIDE);
+                stack.remove(DKComponents.RANGE_EDIT_TARGET.get());
+            }
+        }
     }
 }

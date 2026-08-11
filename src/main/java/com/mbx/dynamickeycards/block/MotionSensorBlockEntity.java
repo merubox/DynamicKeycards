@@ -3,6 +3,7 @@ package com.mbx.dynamickeycards.block;
 import com.mbx.dynamickeycards.compat.create.CreateLinkCompat;
 import com.mbx.dynamickeycards.registry.DKBlockEntities;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
@@ -16,6 +17,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -59,6 +61,38 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
     @Nullable
     private Object createLinkAdapter;
 
+    /**
+     * The confirmed detection zone, or {@code null} if this sensor's range has never been
+     * edited - {@link #detectionZone} then falls back to {@link RangeBox#LEGACY_DEFAULT}, the
+     * fixed column every sensor used before range-editing existed, so an existing world's
+     * sensors keep detecting exactly what they always did until someone actually reconfigures
+     * one. Only ever replaced wholesale, by {@link #confirmRangeEdit} - see that method for why
+     * this is never mutated in place.
+     */
+    @Nullable
+    private RangeBox zone;
+    /**
+     * Whether a range edit is currently armed - entered by right-clicking with redstone dust
+     * (see {@code MotionSensorBlock#tryRangeEditInteraction}), confirmed by doing that again
+     * (consuming one redstone dust and replacing {@link #zone} with {@link #editZone}), or
+     * cancelled by any bare-hand click, same as {@code CardReaderBlockEntity}'s register mode.
+     * Deliberately not persisted - like that mode's own pending-confirmation timers, a stale
+     * "still editing" flag surviving a reload would just be confusing, never unsafe, so it's
+     * simplest to let it always come back {@code false} after one.
+     */
+    private boolean rangeEditMode;
+    /**
+     * The working copy being adjusted while {@link #rangeEditMode} is armed - starts as a copy
+     * of {@link #detectionZone}'s current box (whichever of {@link #zone}/{@link RangeBox#LEGACY_DEFAULT}
+     * applies) the moment edit mode is entered, and is what every {@code Ctrl+Scroll} adjustment
+     * (see {@link #adjustRange}) actually changes. {@link #zone} itself - and therefore what the
+     * sensor is really detecting - stays untouched until {@link #confirmRangeEdit} commits this
+     * over it, so an in-progress edit can never affect live detection, and cancelling just
+     * discards this copy without needing to undo anything.
+     */
+    @Nullable
+    private RangeBox editZone;
+
     public MotionSensorBlockEntity(BlockPos pos, BlockState state) {
         this(DKBlockEntities.MOTION_SENSOR.get(), pos, state);
     }
@@ -89,10 +123,10 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
      * release delay included, rather than just a raw "detected right now" blip.
      */
     static boolean computeShouldSignal(Level level, BlockPos pos, BlockState state, MotionSensorBlockEntity be, long now) {
-        if (!(state.getBlock() instanceof MotionSensorBlock sensor)) {
+        if (!(state.getBlock() instanceof MotionSensorBlock)) {
             return false;
         }
-        boolean detected = !level.getEntitiesOfClass(LivingEntity.class, sensor.detectionZone(pos),
+        boolean detected = !level.getEntitiesOfClass(LivingEntity.class, be.detectionZone(pos),
                 MotionSensorBlockEntity::countsAsPresent).isEmpty();
         if (detected) {
             be.lastDetectedGameTime = now;
@@ -101,6 +135,77 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
         // that many ticks have passed since the last detection, resetting if something re-enters.
         return detected || (be.signalLength > 0 && be.lastDetectedGameTime >= 0
                 && now - be.lastDetectedGameTime < be.signalLength);
+    }
+
+    /**
+     * This sensor's live detection zone: {@link #zone} once it's ever been configured, else
+     * {@link RangeBox#LEGACY_DEFAULT} - never {@link #editZone}, which only ever feeds into
+     * {@link #zone} via a successful {@link #confirmRangeEdit}. Shared by the plain zone scan
+     * above and {@code AdvancedSensorBlockEntity#tickBoundToReader}'s card-carrying-player scan,
+     * so both modes of detection always agree on what "in range" means for a given sensor.
+     */
+    public AABB detectionZone(BlockPos pos) {
+        return (zone != null ? zone : RangeBox.LEGACY_DEFAULT).toAABB(pos);
+    }
+
+    public boolean isRangeEditMode() {
+        return rangeEditMode;
+    }
+
+    /** The box currently being previewed/adjusted - only meaningful while {@link #isRangeEditMode()}. */
+    @Nullable
+    public RangeBox getEditZone() {
+        return editZone;
+    }
+
+    /** Starts a fresh edit from whatever this sensor is currently detecting - see {@link #detectionZone}. */
+    public void enterRangeEdit() {
+        this.rangeEditMode = true;
+        this.editZone = zone != null ? zone : RangeBox.LEGACY_DEFAULT;
+        this.syncToClient();
+    }
+
+    /** Discards {@link #editZone} without touching {@link #zone} - live detection never changed to begin with. */
+    public void cancelRangeEdit() {
+        this.rangeEditMode = false;
+        this.editZone = null;
+        this.syncToClient();
+    }
+
+    /**
+     * Commits {@link #editZone} over {@link #zone}, ending the edit, and reports whether that
+     * actually changed anything - a confirm that leaves the detection zone exactly as it already
+     * was shouldn't cost the caller a redstone dust (see {@code MotionSensorBlock#tryConfirmRangeEdit}).
+     * Always replaces the whole box rather than patching it in place - {@link #editZone} was
+     * already clamped to the legal envelope on every single adjustment (see {@link #adjustRange}),
+     * so there's never a partial or out-of-range state to reject here.
+     */
+    public boolean confirmRangeEdit() {
+        boolean changed = !editZone.equals(zone != null ? zone : RangeBox.LEGACY_DEFAULT);
+        this.zone = editZone;
+        this.rangeEditMode = false;
+        this.editZone = null;
+        this.setChanged();
+        this.syncToClient();
+        return changed;
+    }
+
+    /**
+     * Grows or shrinks {@link #editZone} by one cell facing {@code direction}, clamped to this
+     * sensor's envelope (see {@link RangeBox#envelopeFor}) - a no-op if not currently editing.
+     * Server-side only, called from the scroll-wheel packet handler; {@code openDirection} comes
+     * from the caller (it needs the live {@link BlockState} to read {@code FACING}, which this
+     * class has no reason to hold onto itself).
+     */
+    public void adjustRange(Direction direction, Direction openDirection, boolean grow) {
+        if (!rangeEditMode || editZone == null) {
+            return;
+        }
+        RangeBox next = grow ? editZone.grow(direction, openDirection) : editZone.shrink(direction, openDirection);
+        if (!next.equals(editZone)) {
+            this.editZone = next;
+            this.syncToClient();
+        }
     }
 
     /**
@@ -269,6 +374,23 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
         if (!frequencySlots[1].isEmpty()) {
             tag.put("FrequencySlot1", frequencySlots[1].save(registries));
         }
+        if (zone != null) {
+            tag.put("Zone", writeRangeBox(zone));
+        }
+        // rangeEditMode/editZone deliberately go through the exact same tag as the persisted
+        // save data (not a separate sync-only path) - getUpdateTag below is just this same
+        // saveAdditional, so anything left out of it would never reach the client either, and
+        // the in-progress box would silently never render (a real bug an earlier version of this
+        // had: the box was tracked server-side but the client had no way to learn about it).
+        // Piggybacking on the save file this way is harmless - CardReaderBlockEntity's own
+        // register mode is persisted the same way - so a mid-edit sensor just keeps its
+        // in-progress box armed across a reload instead of silently losing it.
+        if (rangeEditMode) {
+            tag.putBoolean("RangeEditMode", true);
+            if (editZone != null) {
+                tag.put("EditZone", writeRangeBox(editZone));
+            }
+        }
     }
 
     @Override
@@ -280,6 +402,25 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
                 ? ItemStack.parseOptional(registries, tag.getCompound("FrequencySlot0")) : ItemStack.EMPTY;
         frequencySlots[1] = tag.contains("FrequencySlot1")
                 ? ItemStack.parseOptional(registries, tag.getCompound("FrequencySlot1")) : ItemStack.EMPTY;
+        zone = tag.contains("Zone") ? readRangeBox(tag.getCompound("Zone")) : null;
+        rangeEditMode = tag.getBoolean("RangeEditMode");
+        editZone = tag.contains("EditZone") ? readRangeBox(tag.getCompound("EditZone")) : null;
+    }
+
+    private static CompoundTag writeRangeBox(RangeBox box) {
+        CompoundTag boxTag = new CompoundTag();
+        boxTag.putInt("MinX", box.minX());
+        boxTag.putInt("MaxX", box.maxX());
+        boxTag.putInt("MinY", box.minY());
+        boxTag.putInt("MaxY", box.maxY());
+        boxTag.putInt("MinZ", box.minZ());
+        boxTag.putInt("MaxZ", box.maxZ());
+        return boxTag;
+    }
+
+    private static RangeBox readRangeBox(CompoundTag boxTag) {
+        return new RangeBox(boxTag.getInt("MinX"), boxTag.getInt("MaxX"), boxTag.getInt("MinY"),
+                boxTag.getInt("MaxY"), boxTag.getInt("MinZ"), boxTag.getInt("MaxZ"));
     }
 
     @Override

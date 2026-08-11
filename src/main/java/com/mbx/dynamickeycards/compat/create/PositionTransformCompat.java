@@ -9,7 +9,7 @@ import com.simibubi.create.api.contraption.transformable.MovedBlockTransformerRe
  * Registers our block entities with Create's structure-transform system, so a linked/bound
  * position survives being moved as a whole - a Create schematic printed at an offset or
  * rotation, or a contraption that's assembled, moved, and disassembled elsewhere. Without this,
- * {@code CardReaderBlockEntity#linkedReaderPos}/{@code AdvancedSensorBlockEntity#boundReaderPos}/
+ * {@code CardReaderBlockEntity#linkedReaderPositions}/{@code AdvancedSensorBlockEntity#boundReaderPos}/
  * {@code #boundSensorPos} are plain world-absolute {@link net.minecraft.core.BlockPos} values
  * with nothing that would otherwise know to update them, so they'd keep pointing at wherever the
  * other end was at capture time - silently wrong (not crashing) after the move, since every read

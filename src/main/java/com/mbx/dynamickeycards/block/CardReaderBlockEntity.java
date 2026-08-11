@@ -9,6 +9,7 @@ import com.mbx.dynamickeycards.registry.DKBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
@@ -22,6 +23,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -42,14 +45,20 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
     /** Own keys of individually blocked cards — the block always beats the allow list. */
     private final Set<UUID> blockedCards = new HashSet<>();
     /**
-     * Another reader this one shares registered/blocked cards with (see {@link #accepts}) -
-     * set on both readers when one is placed while linked to the other (see
+     * Other readers this one shares registered/blocked cards with (see {@link #accepts}) - each
+     * entry added on both ends when one reader is placed while linked to the other (see
      * {@code LinkedReaderBlockItem}/{@code CardReaderBlock#setPlacedBy}). Everything else about
      * a reader - owner, mode/frequency, pulse - stays independent; this only affects which cards
      * a tap here accepts.
+     *
+     * <p>A reader can be directly linked to more than one other reader - chaining three or more
+     * readers this way (A-B, then B-C) used to silently break A-B, back when this was a single
+     * nullable position that the second link simply overwrote. The whole connected group -
+     * however many readers, in whatever shape (chain, star, even a loop) - is meant to share one
+     * combined accept list, so {@link #accepts} walks the full reachable set (see
+     * {@link #linkedGroup()}) rather than just this field's own direct entries.
      */
-    @Nullable
-    private BlockPos linkedReaderPos;
+    private final Set<BlockPos> linkedReaderPositions = new HashSet<>();
     private boolean registerMode;
     /**
      * How long a destructive action's confirming second click stays armed before it has to be
@@ -369,43 +378,79 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
         this.syncToClient();
     }
 
-    @Nullable
-    public BlockPos getLinkedReader() {
-        return linkedReaderPos;
+    public Set<BlockPos> getLinkedReaders() {
+        return Set.copyOf(linkedReaderPositions);
     }
 
     /** Server-side only; doesn't touch the other end - see {@code CardReaderBlock#setPlacedBy} for the mutual case. */
-    public void setLinkedReader(@Nullable BlockPos pos) {
-        this.linkedReaderPos = pos;
-        this.syncToClient();
-    }
-
-    /**
-     * Rewrites {@link #linkedReaderPos} through {@code transform} - called from
-     * {@code compat.create.PositionTransformCompat} when this reader is moved as a whole (a
-     * Create schematic printed at an offset/rotation, or a contraption disassembling elsewhere).
-     * A stored position is a world-absolute {@link BlockPos}, so without this it would keep
-     * pointing at wherever the linked reader used to be, not wherever this move actually put it.
-     * Applied unconditionally rather than checking whether a reader now exists there: if the
-     * linked reader moved along with this one (the common case - they're usually part of the
-     * same build), the transformed position is exactly right; if it didn't move with this one,
-     * the position was already going to be wrong either way, and this doesn't make that any
-     * worse - the existing null/type checks everywhere this field is read already treat "nothing
-     * there" as simply unlinked.
-     */
-    public void applyPositionTransform(UnaryOperator<BlockPos> transform) {
-        if (linkedReaderPos != null) {
-            linkedReaderPos = transform.apply(linkedReaderPos);
+    public void addLinkedReader(BlockPos pos) {
+        if (linkedReaderPositions.add(pos)) {
             this.syncToClient();
         }
     }
 
-    @Nullable
-    private CardReaderBlockEntity linkedReader() {
-        if (linkedReaderPos == null || level == null) {
-            return null;
+    /**
+     * Server-side only; doesn't touch the other end - see {@code CardReaderBlock#onRemove}, which
+     * calls this on every reader still pointing at one that's being destroyed, so a stale entry
+     * can never linger and later get silently, one-sidedly inherited by whatever unrelated reader
+     * a player happens to place at that same position afterward.
+     */
+    public void removeLinkedReader(BlockPos pos) {
+        if (linkedReaderPositions.remove(pos)) {
+            this.syncToClient();
         }
-        return level.getBlockEntity(linkedReaderPos) instanceof CardReaderBlockEntity be ? be : null;
+    }
+
+    /**
+     * Rewrites every entry in {@link #linkedReaderPositions} through {@code transform} - called
+     * from {@code compat.create.PositionTransformCompat} when this reader is moved as a whole (a
+     * Create schematic printed at an offset/rotation, or a contraption disassembling elsewhere).
+     * A stored position is a world-absolute {@link BlockPos}, so without this it would keep
+     * pointing at wherever a linked reader used to be, not wherever this move actually put it.
+     * Applied unconditionally rather than checking whether a reader now exists there: if a linked
+     * reader moved along with this one (the common case - they're usually part of the same
+     * build), the transformed position is exactly right; if it didn't move with this one, the
+     * position was already going to be wrong either way, and this doesn't make that any worse -
+     * {@link #linkedGroup()} already treats "nothing of the right type there" as simply
+     * unreachable.
+     */
+    public void applyPositionTransform(UnaryOperator<BlockPos> transform) {
+        if (linkedReaderPositions.isEmpty()) {
+            return;
+        }
+        Set<BlockPos> transformed = new HashSet<>();
+        for (BlockPos pos : linkedReaderPositions) {
+            transformed.add(transform.apply(pos));
+        }
+        linkedReaderPositions.clear();
+        linkedReaderPositions.addAll(transformed);
+        this.syncToClient();
+    }
+
+    /**
+     * This reader plus every reader reachable by following {@link #linkedReaderPositions} from
+     * here - a breadth-first walk of the whole connected group, however many readers are in it or
+     * whatever shape they're linked in (chain, star, even a loop; a loop is exactly as safe as
+     * any other shape since {@code visited} stops it from being walked twice). Two readers linked
+     * only through a third one still end up sharing one accept list this way, which a single
+     * direct-neighbor check wouldn't give them.
+     */
+    private Set<CardReaderBlockEntity> linkedGroup() {
+        Set<CardReaderBlockEntity> visited = new HashSet<>();
+        visited.add(this);
+        if (level == null) {
+            return visited;
+        }
+        Deque<CardReaderBlockEntity> frontier = new ArrayDeque<>(visited);
+        while (!frontier.isEmpty()) {
+            CardReaderBlockEntity current = frontier.poll();
+            for (BlockPos pos : current.linkedReaderPositions) {
+                if (level.getBlockEntity(pos) instanceof CardReaderBlockEntity linked && visited.add(linked)) {
+                    frontier.add(linked);
+                }
+            }
+        }
+        return visited;
     }
 
     public boolean isBlocked(UUID ownKey) {
@@ -448,22 +493,24 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
         return isRegisteredAnyHere(KeycardItem.allKeys(stack));
     }
 
-    /** {@link #isBlocked}, but also honoring a linked reader's own block list - see {@link #linkedReaderPos}. */
+    /** {@link #isBlocked}, but honoring the whole linked group's block lists - see {@link #linkedGroup()}. */
     private boolean isBlockedHere(UUID ownKey) {
-        if (isBlocked(ownKey)) {
-            return true;
+        for (CardReaderBlockEntity reader : linkedGroup()) {
+            if (reader.isBlocked(ownKey)) {
+                return true;
+            }
         }
-        CardReaderBlockEntity linked = linkedReader();
-        return linked != null && linked.isBlocked(ownKey);
+        return false;
     }
 
-    /** {@link #isRegisteredAny}, but also honoring a linked reader's own registrations - see {@link #linkedReaderPos}. */
+    /** {@link #isRegisteredAny}, but honoring the whole linked group's registrations - see {@link #linkedGroup()}. */
     private boolean isRegisteredAnyHere(Iterable<UUID> keys) {
-        if (isRegisteredAny(keys)) {
-            return true;
+        for (CardReaderBlockEntity reader : linkedGroup()) {
+            if (reader.isRegisteredAny(keys)) {
+                return true;
+            }
         }
-        CardReaderBlockEntity linked = linkedReader();
-        return linked != null && linked.isRegisteredAny(keys);
+        return false;
     }
 
     private void syncToClient() {
@@ -500,9 +547,11 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
             tag.put("FrequencySlot1", frequencySlots[1].save(registries));
         }
         tag.putString("SignalMode", signalMode.name());
-        if (linkedReaderPos != null) {
-            tag.put("LinkedReader", NbtUtils.writeBlockPos(linkedReaderPos));
+        ListTag linked = new ListTag();
+        for (BlockPos pos : linkedReaderPositions) {
+            linked.add(NbtUtils.writeBlockPos(pos));
         }
+        tag.put("LinkedReaders", linked);
     }
 
     @Override
@@ -529,7 +578,17 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
         signalMode = tag.contains("SignalMode")
                 ? SignalMode.byName(tag.getString("SignalMode"))
                 : (tag.getBoolean("BroadcastEnabled") ? SignalMode.MIXED : SignalMode.NORMAL);
-        linkedReaderPos = tag.contains("LinkedReader") ? NbtUtils.readBlockPos(tag, "LinkedReader").orElse(null) : null;
+        linkedReaderPositions.clear();
+        // pre-0.1.6 saves only ever had one entry, under the old singular key
+        if (tag.contains("LinkedReader")) {
+            NbtUtils.readBlockPos(tag, "LinkedReader").ifPresent(linkedReaderPositions::add);
+        }
+        for (Tag entry : tag.getList("LinkedReaders", Tag.TAG_INT_ARRAY)) {
+            if (entry instanceof IntArrayTag intArray && intArray.getAsIntArray().length == 3) {
+                int[] xyz = intArray.getAsIntArray();
+                linkedReaderPositions.add(new BlockPos(xyz[0], xyz[1], xyz[2]));
+            }
+        }
     }
 
     @Override

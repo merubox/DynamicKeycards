@@ -18,16 +18,7 @@ public class DKCreativeTabs {
                     .title(Component.translatable("itemGroup.dynamickeycards"))
                     .icon(() -> new ItemStack(DKItems.GOLDEN_KEYCARD.get()))
                     .displayItems((params, output) -> {
-                        output.accept(DKBlocks.INSERT_CARD_READER.get());
-                        output.accept(DKBlocks.TOUCH_CARD_READER.get());
-                        output.accept(DKBlocks.SWIPE_CARD_READER.get());
-                        output.accept(DKBlocks.ADVANCED_CARD_READER.get());
-                        output.accept(DKBlocks.OBSIDIAN_CARD_READER.get());
-                        output.accept(DKBlocks.CARD_DUPLICATOR.get());
-                        output.accept(DKBlocks.WALL_SENSOR.get());
-                        output.accept(DKBlocks.CEILING_SENSOR.get());
-                        output.accept(DKBlocks.ADVANCED_WALL_SENSOR.get());
-                        output.accept(DKBlocks.ADVANCED_CEILING_SENSOR.get());
+                        DKBlocks.TAB_BLOCKS.forEach(item -> output.accept(item.get()));
                         DKItems.TAB_ITEMS.forEach(item -> output.accept(item.get()));
                     })
                     .build());
