@@ -9,7 +9,8 @@ import net.minecraft.world.level.Level;
 /**
  * Feedback tones for the card machines, so the result is audible without watching the
  * status lights: high bell = pass/complete, mid pling = registered, low pling = removed
- * or cancelled, low bass = denied. All vanilla note block sounds — no custom assets.
+ * or cancelled, low bass = denied. Vanilla note block sounds, plus one vanilla button click
+ * ({@link #manualTrigger}) — no custom assets.
  * Call server-side only; the sound is broadcast to nearby players.
  */
 public final class DKSounds {
@@ -35,6 +36,15 @@ public final class DKSounds {
     /** Card or action rejected. */
     public static void deny(Level level, BlockPos pos) {
         play(level, pos, SoundEvents.NOTE_BLOCK_BASS.value(), 0.6f, 0.6f);
+    }
+
+    /**
+     * A transmitter's manual trigger in mixed mode - vanilla's own stone button press, at vanilla's
+     * own volume. The transmitter is standing in for a button wired into it (its default trigger
+     * length is literally the stone button's), so it should sound like pressing one.
+     */
+    public static void manualTrigger(Level level, BlockPos pos) {
+        play(level, pos, SoundEvents.STONE_BUTTON_CLICK_ON, 1f, 1f);
     }
 
     /** Register mode armed / duplication source inserted. */

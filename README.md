@@ -51,7 +51,16 @@ On top of that:
   bind) and right-click a reader in register mode to connect them. A reader can be
   linked to more than one other, and the whole connected group accepts a card the
   moment it's registered anywhere in it; everything else about each device stays
-  fully independent.
+  fully independent. Links are stored by device identity, not coordinates, so they
+  survive being moved, rebuilt, or copied with a Create schematic.
+- **Transmitter & Receiver** — wireless redstone. A receiver binds to a reader, an
+  advanced sensor, or a transmitter and reproduces that source's signal at its own
+  location, at any distance; it can mirror the source live (with an optional release
+  delay) or latch on and off with each trigger. A transmitter feeds the other end,
+  from wiring alone or from wiring *and* a direct click.
+- **Maintenance cards** — golden and estate maintenance cards open a device's
+  settings and pick it up. They deliberately grant no registration or pass access;
+  each swaps 1:1 with its keycard whenever you need the other half.
 
 ## Integrations (all optional)
 
@@ -59,7 +68,7 @@ On top of that:
 |---|---|
 | **EMI** | The machine processes as recipe categories: Card Registering (blank/keycard → keycard, per color) and Card Duplicating (fork / issue member / co-manager, per color), shown as a left-to-right process with the machine as a hoverable catalyst. |
 | **Jade** | Readers show their owner and register-mode state; duplicators show whether a copy is pending. |
-| **Create** | Standing + wrench right-click on a reader or sensor opens its link screen: two frequency slots let its accept signal transmit wirelessly over a Redstone Link network, **Mixed Mode** sends it both wirelessly and over physical redstone at once, and a number display lets you dial in the signal length (holding right-click on it opens a tick/second/minute adjustment scale). Sneak + wrench picks the device up straight into your inventory (readers: owner only). |
+| **Create** | Standing + wrench right-click on a reader or sensor opens its link screen: two frequency slots let its accept signal transmit wirelessly over a Redstone Link network, **Simultaneous Mode** sends it both wirelessly and over physical redstone at once, and a number display lets you dial in the signal length (holding right-click on it opens a tick/second/minute adjustment scale). Sneak + wrench picks the device up straight into your inventory. |
 
 Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, Nederlands, 中文(简体).
 
@@ -90,6 +99,7 @@ Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, 
 | 0.1.5 | Sensors (wall/ceiling, plain & advanced), advanced-sensor↔reader binding + dyeing, reader-to-reader linking, Mixed Mode |
 | 0.1.6 | Sensor-to-sensor binding, connections survive Create schematics/contraptions, quieter connection sounds |
 | 0.1.7 | Readers can link to more than one other reader, linking requires register mode, link cleanup on break, interruptible register mode, customizable detection range for advanced sensors |
+| 0.1.8 | Transmitter & Receiver, maintenance cards, DK chip, device links stored by identity so they survive schematics and moves, mode-name overhaul |
 
 ## Requirements
 

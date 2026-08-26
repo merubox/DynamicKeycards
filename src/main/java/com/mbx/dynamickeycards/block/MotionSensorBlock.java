@@ -1,5 +1,7 @@
 package com.mbx.dynamickeycards.block;
 
+import com.mbx.dynamickeycards.DKNetwork;
+
 import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.item.BoundSensorBlockItem;
 import com.mbx.dynamickeycards.registry.DKBlockEntities;
@@ -9,6 +11,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -72,16 +75,29 @@ public interface MotionSensorBlock {
      * already-bound one would silently steal its single outgoing slot and sever whatever it was
      * already driving (see {@link AdvancedSensorBlockEntity#applyPlacedBinding}'s own doc) -
      * surprising and destructive for no benefit, since the same reach is available by just
-     * binding directly to the reader instead. A plain sensor target has no outgoing slot to
-     * begin with, so it's never locked this way.
+     * binding directly to the reader instead.
+     *
+     * <p>Also simply doesn't apply at all if this block is a <em>plain</em> sensor (falls through
+     * to whatever this item's own default block interaction is, e.g. placing itself against this
+     * block like any other item would) - a plain sensor is no longer a valid bind target at all
+     * (only advanced-to-advanced binding remains). A receiver bound directly to whichever advanced
+     * sensor would have driven it plays that same "remote relay" role now, without needing a
+     * second, permanently-linked sensor in between. Removing this changes an already-shipped
+     * (0.1.6) capability, so an existing world's plain-sensor targets simply stop accepting new
+     * bindings going forward - any relay already set up before this keeps working exactly as it
+     * did (nothing here touches an existing binding). No deny message/sound here, unlike the
+     * "already bound" case below - a plain sensor was never a target to begin with, so there's
+     * nothing to explain; it should read the same as right-clicking any other ordinary block.
      */
     @Nullable
     default ItemInteractionResult tryBindItemInteraction(ItemStack stack, Level level, BlockPos pos, Player player) {
         if (!(stack.getItem() instanceof BoundSensorBlockItem sensorItem)) {
             return null;
         }
-        if (level.getBlockEntity(pos) instanceof AdvancedSensorBlockEntity existing
-                && (existing.getBoundReader() != null || existing.getBoundSensor() != null)) {
+        if (!(level.getBlockEntity(pos) instanceof AdvancedSensorBlockEntity target)) {
+            return null;
+        }
+        if (target.getBoundReader() != null || target.getBoundSensor() != null) {
             if (!level.isClientSide) {
                 player.displayClientMessage(
                         Component.translatable("dynamickeycards.link_device.already_bound").withStyle(ChatFormatting.RED), true);
@@ -90,7 +106,12 @@ public interface MotionSensorBlock {
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
         if (!level.isClientSide) {
-            sensorItem.bindToSensor(stack, pos);
+            sensorItem.bindToSensor(stack, target.getDeviceId());
+            // forces the held-item resync immediately - see CardReaderBlock's sensor-bind case
+            // for why this matters (otherwise the bind-target highlight can miss the moment of
+            // binding, only catching up on the next automatic per-tick sync or a reconnect)
+            player.containerMenu.broadcastChanges();
+            DKNetwork.registerDevicePosition(player, target.getDeviceId(), pos);
             // white, not green: this only tunes the held item, the actual connection isn't
             // "complete" (green) until it's placed - see AdvancedSensorBlockEntity#applyPlacedBinding.
             // No sound here - only the completed connection plays one.
@@ -201,7 +222,11 @@ public interface MotionSensorBlock {
         if (!(sensor instanceof AdvancedSensorBlockEntity advanced) || advanced.getBoundReader() == null) {
             return true;
         }
-        return level.getBlockEntity(advanced.getBoundReader()) instanceof CardReaderBlockEntity reader && reader.isRegisterMode();
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return false;
+        }
+        BlockPos readerPos = DeviceIndex.get(serverLevel).getPosition(advanced.getBoundReader());
+        return readerPos != null && level.getBlockEntity(readerPos) instanceof CardReaderBlockEntity reader && reader.isRegisterMode();
     }
 
     /**
@@ -209,8 +234,7 @@ public interface MotionSensorBlock {
      * {@code player}'s whole inventory a redstone dust stack is currently tagged for {@code pos} -
      * not just whichever hand triggered the cancel/confirm, since that might not be the same hand
      * (or even still a hand at all - a bare-hand cancel, or cancelling/confirming with the tagged
-     * dust in the *other* hand) that originally armed it. Used by both {@link #tryCancelRangeEdit}
-     * and {@code DKNetwork#handleCommit}.
+     * dust in the *other* hand) that originally armed it.
      */
     static void clearRangeEditMarkers(Player player, BlockPos pos) {
         Inventory inventory = player.getInventory();

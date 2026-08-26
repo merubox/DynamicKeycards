@@ -5,9 +5,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 
 /**
- * Action-bar feedback text for the card machines, the counterpart to {@link DKSounds}' tones -
- * previously reimplemented separately in each caller (with drifting support for translation
- * args between them) instead of sharing one method.
+ * Action-bar feedback text for the card machines, the counterpart to {@link DKSounds}' tones.
  */
 public final class DKMessages {
 

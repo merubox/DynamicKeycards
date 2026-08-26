@@ -63,24 +63,28 @@ public class DKComponents {
     /**
      * The reader an unplaced advanced sensor item is bound to (set by right-clicking a card
      * reader while holding it, see {@code BoundSensorBlockItem}) - carried over into the block
-     * entity on placement. Absent means "not yet bound".
+     * entity on placement. Absent means "not yet bound". Identifies the target by its stable
+     * device id (see {@code block.DeviceIndex}) rather than a {@link BlockPos} - a coordinate
+     * captured at bind time could go stale (the target moves, or something else gets placed at
+     * the same spot later), while an id either still resolves to the real target or doesn't
+     * resolve at all.
      */
-    public static final Supplier<DataComponentType<BlockPos>> BOUND_READER = COMPONENTS.register("bound_reader",
-            () -> DataComponentType.<BlockPos>builder()
-                    .persistent(BlockPos.CODEC)
-                    .networkSynchronized(BlockPos.STREAM_CODEC)
+    public static final Supplier<DataComponentType<UUID>> BOUND_READER = COMPONENTS.register("bound_reader",
+            () -> DataComponentType.<UUID>builder()
+                    .persistent(UUIDUtil.CODEC)
+                    .networkSynchronized(UUIDUtil.STREAM_CODEC)
                     .build());
 
     /**
      * The reader an unplaced reader item is set to link with (set by right-clicking an existing
      * card reader while holding it, see {@code LinkedReaderBlockItem}) - carried over into the
      * block entity on placement, at which point both readers point to each other. Absent means
-     * "not yet linked".
+     * "not yet linked". See {@link #BOUND_READER} for why this is a device id, not a {@link BlockPos}.
      */
-    public static final Supplier<DataComponentType<BlockPos>> LINKED_READER = COMPONENTS.register("linked_reader",
-            () -> DataComponentType.<BlockPos>builder()
-                    .persistent(BlockPos.CODEC)
-                    .networkSynchronized(BlockPos.STREAM_CODEC)
+    public static final Supplier<DataComponentType<UUID>> LINKED_READER = COMPONENTS.register("linked_reader",
+            () -> DataComponentType.<UUID>builder()
+                    .persistent(UUIDUtil.CODEC)
+                    .networkSynchronized(UUIDUtil.STREAM_CODEC)
                     .build());
 
     /**
@@ -88,12 +92,25 @@ public class DKComponents {
      * existing wall/ceiling sensor - plain or advanced - while holding it, see
      * {@code BoundSensorBlockItem}) - carried over into the block entity on placement. Mutually
      * exclusive with {@link #BOUND_READER}: setting one clears the other, since a sensor can only
-     * be bound to one thing at a time. Absent means "not yet bound to a sensor".
+     * be bound to one thing at a time. Absent means "not yet bound to a sensor". See
+     * {@link #BOUND_READER} for why this is a device id, not a {@link BlockPos}.
      */
-    public static final Supplier<DataComponentType<BlockPos>> BOUND_SENSOR = COMPONENTS.register("bound_sensor",
-            () -> DataComponentType.<BlockPos>builder()
-                    .persistent(BlockPos.CODEC)
-                    .networkSynchronized(BlockPos.STREAM_CODEC)
+    public static final Supplier<DataComponentType<UUID>> BOUND_SENSOR = COMPONENTS.register("bound_sensor",
+            () -> DataComponentType.<UUID>builder()
+                    .persistent(UUIDUtil.CODEC)
+                    .networkSynchronized(UUIDUtil.STREAM_CODEC)
+                    .build());
+
+    /**
+     * The device (reader, transmitter, or advanced sensor - anything implementing
+     * {@code block.SignalSource}) an unplaced receiver item is set to listen to (set by
+     * right-clicking an existing one while holding it, see {@code ReceiverBlockItem}) - carried
+     * over into the block entity on placement. Absent means "not yet bound".
+     */
+    public static final Supplier<DataComponentType<UUID>> BOUND_SOURCE = COMPONENTS.register("bound_source",
+            () -> DataComponentType.<UUID>builder()
+                    .persistent(UUIDUtil.CODEC)
+                    .networkSynchronized(UUIDUtil.STREAM_CODEC)
                     .build());
 
     /**

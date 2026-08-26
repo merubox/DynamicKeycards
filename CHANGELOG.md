@@ -4,6 +4,69 @@
 
 All notable changes to Dynamic Keycards are documented here.
 
+## 0.1.8
+
+### Added
+- **Transmitter and Receiver.** A receiver binds to a card reader, an advanced
+  sensor, or a transmitter, and reproduces that source's redstone signal at its own
+  location, anywhere in the world. A transmitter is the other end: it turns a
+  redstone signal (or a direct click) into something receivers can pick up.
+  - Receivers have **Pulse Mode** (mirrors the source's signal strength live, with
+    an optional release delay) and **Toggle Mode** (flips its own output every time
+    the source switches on, so it stays on until the next trigger).
+  - Transmitters have **Redstone-Only Mode** (wiring only) and **Mixed Mode**
+    (wiring *or* a direct click, with a configurable trigger duration).
+  - Both light up while they're active.
+- **DK Chip.** A new crafting component. Every device recipe that used a redstone
+  lamp now takes a DK chip instead.
+- **Golden Maintenance Card and Estate Maintenance Card.** Maintenance-tier
+  counterparts to the two master keycards: they open a device's settings screen and
+  pick devices up. They grant no card
+  registration or pass access — that stays with the keycards. Either maintenance
+  card swaps 1:1 with its keycard at any time, and an estate card keeps its binding
+  across the swap.
+- **Connections now survive being moved or copied.** Every device carries a stable
+  id rather than a raw coordinate, so links hold through Create schematics,
+  contraption assembly, and rebuilding elsewhere. Printing a schematic containing
+  linked devices wires the copies to each other, while a link that pointed outside
+  the print still points at the original device.
+- **An advanced sensor bound to a reader can now pick its mode.** Previously it was
+  locked: **Sensor-Centric Simultaneous Mode** (the old behavior — the sensor's own
+  release delay holds the reader's signal open), **Reader-Only Mode** (the sensor's
+  local output stays off), or **Simultaneous Mode** (the reader is pulsed and
+  releases on its own signal length).
+- `/dk` and `/dks` as shorthands for `/dynamickeycards`.
+- `/dynamickeycards release` clears a reader's owner, leaving it operable only by
+  the golden cards.
+- Reset buttons on the transmitter and receiver screens, and a confirm button that
+  closes them.
+
+### Changed
+- **Mode names now follow one rule:** "~Only" when a signal goes to one place,
+  "Simultaneous" when it goes to both equally, and "Mixed" only for "either input
+  will do". So the reader's and sensor's **Mixed Mode is now Simultaneous Mode**,
+  Normal Mode is **Reader-Only** (or **Sensor-Only** on an unbound sensor), and
+  Link Mode is **Link-Only Mode**. Existing setups keep their selection.
+- **Plain sensors are no longer part of the linking system.** An advanced sensor
+  can't be bound to one any more — receivers cover that relaying job now. Links
+  made before this update keep working.
+- **A reader's settings screen is no longer open to anyone holding a wrench.** It
+  now takes the reader's owner, a golden maintenance card, or an estate maintenance
+  card bound to that owner — the same check that already guarded picking a reader
+  up, now extended to the devices linked to it as well.
+- **Sneaking is required for one thing only: arming register mode.** Registering
+  and removing cards and tuning device connections work either way now, and a
+  reader's full reset moved from a sneak-click to a standing one.
+- The golden and estate cards now lead the card section of the creative tab.
+
+### Fixed
+- Sensors couldn't be picked up with a wrench.
+- The highlight showing a bind target didn't appear until the target had been
+  looked at once.
+- Reader items showed the wrong face in the inventory.
+- The card duplicator could be operated out of order to bypass its sneak
+  requirement.
+
 ## 0.1.7
 
 ### Added

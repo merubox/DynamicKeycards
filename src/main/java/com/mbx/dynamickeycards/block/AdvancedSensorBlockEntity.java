@@ -9,8 +9,8 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
@@ -18,7 +18,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.function.UnaryOperator;
+import java.util.UUID;
 
 /**
  * A strict superset of {@link MotionSensorBlockEntity}: unbound, it behaves exactly like the
@@ -30,13 +30,12 @@ import java.util.function.UnaryOperator;
  *   whether any nearby player is carrying a card the bound reader would accept; if so, it drives
  *   that reader's own accept pulse directly ({@link CardReaderBlock#acceptPulse}), sound/light/
  *   redstone and all, as if physically tapped.</li>
- *   <li><b>Another sensor</b> (plain or advanced) - it keeps its own ordinary zone detection, but
- *   also relays that same on/off pattern (release delay included) into the target's own signal
- *   remotely, via {@link MotionSensorBlockEntity#holdExternalSignal}. If the target is itself an
- *   advanced sensor, the binding is set up mutually on placement (see
- *   {@link #applyPlacedBinding}), so each one drives the other; a plain target only ever gets
- *   driven, never drives back - that asymmetry is why only advanced sensors carry this item's
- *   binding capability in the first place.</li>
+ *   <li><b>Another advanced sensor</b> (a plain sensor is never a valid target - see
+ *   {@code MotionSensorBlock#tryBindItemInteraction}'s own doc for why that role moved to the
+ *   receiver instead) - it keeps its own ordinary zone detection, but also relays that same
+ *   on/off pattern (release delay included) into the target's own signal remotely, via
+ *   {@link MotionSensorBlockEntity#holdExternalSignal}. The binding is set up mutually on
+ *   placement (see {@link #applyPlacedBinding}), so each one drives the other.</li>
  * </ul>
  *
  * <p>While bound (either kind), the mode/frequency slots are locked to whatever the target
@@ -52,7 +51,7 @@ import java.util.function.UnaryOperator;
  * interaction, and {@code AdvancedSensorRenderer} for how it's drawn); a gold nugget clears it
  * back to the native undyed look.
  */
-public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity {
+public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity implements SignalSource {
 
     /**
      * How far ahead of "now" each tick's {@link MotionSensorBlockEntity#holdExternalSignal}/
@@ -66,11 +65,27 @@ public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity {
     private static final int HOLD_BUFFER_TICKS = 2;
 
     @Nullable
-    private BlockPos boundReaderPos;
+    private UUID boundReaderId;
     @Nullable
-    private BlockPos boundSensorPos;
+    private UUID boundSensorId;
+    /** Only meaningful while {@link #boundReaderId} is set - see {@link BoundReaderMode}'s own doc. */
+    private BoundReaderMode boundReaderMode = BoundReaderMode.SENSOR_CENTRIC_SIMULTANEOUS;
+    /** Best-effort pre-0.1.8 save migration; resolved to {@link #boundReaderId} in {@link #onLoad}, then discarded. See {@code CardReaderBlockEntity#resolveLegacyLinkedReaders}. */
+    @Nullable
+    private BlockPos legacyBoundReaderPos;
+    /** Same as {@link #legacyBoundReaderPos}, for the sensor-target case. */
+    @Nullable
+    private BlockPos legacyBoundSensorPos;
     /** Bound-mode equivalent of the parent's own last-detected tracking, kept separate since only one mode is ever active. */
     private long lastCardDetectedGameTime = -1;
+    /**
+     * Raw (no release-delay/hold applied) 0-or-15 detection this tick, whichever binding mode is
+     * active - what {@link #getSignalSourceStrength} exposes to {@link DeviceIndex}. Deliberately
+     * separate from this sensor's own local output (which does apply release delay/hold), per the
+     * "local duration settings never leak into the wireless value" principle - see
+     * {@link MotionSensorBlockEntity.DetectionResult}'s own doc.
+     */
+    private int lastRawSignalStrength;
     /** {@code null} = its native undyed look; see {@code AdvancedSensorDyeing}. */
     @Nullable
     private DyeColor accentColor;
@@ -89,54 +104,62 @@ public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity {
         this.syncToClient();
     }
 
-    public void setBoundReader(@Nullable BlockPos readerPos) {
-        this.boundReaderPos = readerPos;
-        if (readerPos != null) {
+    public void setBoundReader(@Nullable UUID readerId) {
+        this.boundReaderId = readerId;
+        if (readerId != null) {
             // bound to exactly one thing at a time - see the class doc
-            this.boundSensorPos = null;
+            this.boundSensorId = null;
             // becoming bound: the reader owns the real mode/frequency now, so force back to
             // NORMAL (and off any Create Link registration of its own) - harmless if already there
             super.setSignalMode(SignalMode.NORMAL);
+            // fresh binding starts from the default split rather than silently carrying over
+            // whatever was picked for a previous binding
+            this.boundReaderMode = BoundReaderMode.SENSOR_CENTRIC_SIMULTANEOUS;
         }
         this.setChanged();
     }
 
     @Nullable
-    public BlockPos getBoundReader() {
-        return boundReaderPos;
+    public UUID getBoundReader() {
+        return boundReaderId;
     }
 
-    public void setBoundSensor(@Nullable BlockPos sensorPos) {
-        this.boundSensorPos = sensorPos;
-        if (sensorPos != null) {
+    public BoundReaderMode getBoundReaderMode() {
+        return boundReaderMode;
+    }
+
+    /** Only meaningful while bound to a reader - a no-op otherwise, since {@link #tickBoundToReader} is the only thing that ever reads it. */
+    public void setBoundReaderMode(BoundReaderMode mode) {
+        this.boundReaderMode = mode;
+        this.syncToClient();
+    }
+
+    public void setBoundSensor(@Nullable UUID sensorId) {
+        this.boundSensorId = sensorId;
+        if (sensorId != null) {
             // bound to exactly one thing at a time - see the class doc
-            this.boundReaderPos = null;
+            this.boundReaderId = null;
             super.setSignalMode(SignalMode.NORMAL);
         }
         this.setChanged();
     }
 
     @Nullable
-    public BlockPos getBoundSensor() {
-        return boundSensorPos;
+    public UUID getBoundSensor() {
+        return boundSensorId;
     }
 
-    /**
-     * Rewrites whichever of {@link #boundReaderPos}/{@link #boundSensorPos} is set through
-     * {@code transform} - called from {@code compat.create.PositionTransformCompat} when this
-     * sensor is moved as a whole (a Create schematic printed at an offset/rotation, or a
-     * contraption disassembling elsewhere). See {@code CardReaderBlockEntity#applyPositionTransform}
-     * for why this is applied unconditionally rather than checked against what's actually there
-     * afterward.
-     */
-    public void applyPositionTransform(UnaryOperator<BlockPos> transform) {
-        if (boundReaderPos != null) {
-            boundReaderPos = transform.apply(boundReaderPos);
-            this.setChanged();
-        }
-        if (boundSensorPos != null) {
-            boundSensorPos = transform.apply(boundSensorPos);
-            this.setChanged();
+    @Override
+    public int getSignalSourceStrength() {
+        return lastRawSignalStrength;
+    }
+
+    /** Publishes {@code raw} only when it actually differs from last tick's - {@link DeviceIndex#updateSignal} would no-op either way, but this also skips the {@code UUID} lookup. */
+    private void publishRawSignal(Level level, boolean raw) {
+        int strength = raw ? 15 : 0;
+        if (strength != lastRawSignalStrength) {
+            lastRawSignalStrength = strength;
+            publishSignalSource(level);
         }
     }
 
@@ -155,21 +178,23 @@ public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity {
      * slot.
      */
     static void applyPlacedBinding(Level level, BlockPos pos, @Nullable LivingEntity placer, AdvancedSensorBlockEntity sensor, ItemStack stack) {
-        BlockPos readerPos = BoundSensorBlockItem.boundReader(stack);
-        BlockPos sensorPos = BoundSensorBlockItem.boundSensor(stack);
-        boolean bound;
-        if (readerPos != null) {
-            sensor.setBoundReader(readerPos);
+        UUID readerId = BoundSensorBlockItem.boundReader(stack);
+        UUID sensorId = BoundSensorBlockItem.boundSensor(stack);
+        boolean bound = false;
+        if (readerId != null) {
+            sensor.setBoundReader(readerId);
             bound = true;
-        } else if (sensorPos != null && level.getBlockEntity(sensorPos) instanceof MotionSensorBlockEntity target
-                && !(target instanceof AdvancedSensorBlockEntity advanced && (advanced.getBoundReader() != null || advanced.getBoundSensor() != null))) {
-            sensor.setBoundSensor(sensorPos);
-            if (target instanceof AdvancedSensorBlockEntity advancedTarget) {
-                advancedTarget.setBoundSensor(pos);
+        } else if (sensorId != null && level instanceof ServerLevel serverLevel) {
+            // a plain sensor is never a valid target (see MotionSensorBlock#tryBindItemInteraction's
+            // own doc) - this only ever matters for an item tuned before that rule existed, since a
+            // freshly-tuned one can no longer point at a plain sensor's id in the first place
+            BlockPos targetPos = DeviceIndex.get(serverLevel).getPosition(sensorId);
+            if (targetPos != null && level.getBlockEntity(targetPos) instanceof AdvancedSensorBlockEntity target
+                    && target.getBoundReader() == null && target.getBoundSensor() == null) {
+                sensor.setBoundSensor(sensorId);
+                target.setBoundSensor(sensor.getDeviceId());
+                bound = true;
             }
-            bound = true;
-        } else {
-            bound = false;
         }
         if (bound && placer instanceof Player player) {
             // green, unlike the white "tuned" message shown when the item was bound
@@ -181,50 +206,63 @@ public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity {
         }
     }
 
+    /**
+     * True even while bound to a reader - unlike being bound to a *sensor*, the three mode
+     * buttons stay live there, just repurposed to {@link BoundReaderMode} instead of
+     * {@link SignalMode} (see {@code LinkDeviceMenu}/{@code LinkDeviceScreen}'s own bound-reader
+     * special-casing). {@link #isFrequencyEditable} is the one that stays locked in both bound
+     * states.
+     */
     @Override
     public boolean isLinkModeEditable() {
-        return boundReaderPos == null && boundSensorPos == null;
+        return boundSensorId == null;
+    }
+
+    @Override
+    public boolean isFrequencyEditable() {
+        return boundReaderId == null && boundSensorId == null;
     }
 
     @Override
     public void setSignalMode(SignalMode mode) {
-        if (isLinkModeEditable()) {
+        if (isFrequencyEditable()) {
             super.setSignalMode(mode);
         }
     }
 
     @Override
     public void setFrequencySlot(int index, ItemStack stack) {
-        if (isLinkModeEditable()) {
+        if (isFrequencyEditable()) {
             super.setFrequencySlot(index, stack);
         }
     }
 
     private static boolean carriesAcceptedCard(Player player, CardReaderBlockEntity reader) {
-        Inventory inventory = player.getInventory();
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (!stack.isEmpty() && reader.accepts(stack)) {
-                return true;
-            }
-        }
-        return false;
+        return reader.acceptsAny(player.getInventory());
     }
 
     static void tick(Level level, BlockPos pos, BlockState state, AdvancedSensorBlockEntity be) {
-        if (be.boundReaderPos != null) {
-            tickBoundToReader(level, pos, state, be, be.boundReaderPos);
-        } else if (be.boundSensorPos != null) {
-            tickBoundToSensor(level, pos, state, be, be.boundSensorPos);
+        if (be.boundReaderId != null) {
+            tickBoundToReader(level, pos, state, be, be.boundReaderId);
+        } else if (be.boundSensorId != null) {
+            tickBoundToSensor(level, pos, state, be, be.boundSensorId);
         } else {
-            // standalone: no different from a plain motion sensor
-            MotionSensorBlockEntity.tick(level, pos, state, be);
+            tickStandalone(level, pos, state, be);
         }
     }
 
-    private static void tickBoundToReader(Level level, BlockPos pos, BlockState state, AdvancedSensorBlockEntity be, BlockPos readerPos) {
+    /** Unbound: behaves like a plain motion sensor, but (unlike the plain one) also publishes its raw detection as a {@link SignalSource}. */
+    private static void tickStandalone(Level level, BlockPos pos, BlockState state, AdvancedSensorBlockEntity be) {
         long now = level.getGameTime();
-        CardReaderBlockEntity reader = level.getBlockEntity(readerPos) instanceof CardReaderBlockEntity r ? r : null;
+        DetectionResult detection = MotionSensorBlockEntity.computeShouldSignal(level, pos, state, be, now);
+        applyPresent(level, pos, state, be, detection.withLinger() || be.isExternallyHeld(now));
+        be.publishRawSignal(level, detection.raw());
+    }
+
+    private static void tickBoundToReader(Level level, BlockPos pos, BlockState state, AdvancedSensorBlockEntity be, UUID readerId) {
+        long now = level.getGameTime();
+        BlockPos readerPos = level instanceof ServerLevel serverLevel ? DeviceIndex.get(serverLevel).getPosition(readerId) : null;
+        CardReaderBlockEntity reader = readerPos != null && level.getBlockEntity(readerPos) instanceof CardReaderBlockEntity r ? r : null;
         // register mode is the owner mid-administration on the reader this sensor is bound to -
         // while bound to a reader, this sensor's whole purpose is detecting cards *for* it, so the
         // bound unit pauses together rather than just the push into the reader: no detection, no
@@ -235,6 +273,11 @@ public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity {
         // out - see CardReaderBlock#armRegisterMode.
         if (reader != null && reader.isRegisterMode()) {
             applyPresent(level, pos, state, be, be.isExternallyHeld(now));
+            be.publishRawSignal(level, false);
+            // no override push here (unlike before) - letting SENSOR_CENTRIC_SIMULTANEOUS's own
+            // override simply expire on its own is enough, and correctly falls back to this
+            // reader's own MODE the same way it does whenever this sensor isn't mid-detection -
+            // see the override calls below for why that matters
             return;
         }
         boolean detected = reader != null && !level.getEntitiesOfClass(Player.class, be.detectionZone(pos),
@@ -242,54 +285,127 @@ public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity {
         if (detected) {
             be.lastCardDetectedGameTime = now;
         }
+        be.publishRawSignal(level, detected);
         int hold = be.getSignalLength();
         boolean shouldTrigger = detected || (hold > 0 && be.lastCardDetectedGameTime >= 0
                 && now - be.lastCardDetectedGameTime < hold);
 
-        // the sensor's own local redstone output fires right alongside the reader's - being
-        // bound doesn't stop it from being a sensor in its own right at its own position. Also
-        // honors its own external hold, in case something else is separately driving *this*
-        // sensor (see MotionSensorBlockEntity#holdExternalSignal).
-        applyPresent(level, pos, state, be, shouldTrigger || be.isExternallyHeld(now));
+        // Both override mechanisms below are deliberately gated on shouldTrigger, not called
+        // unconditionally every tick this sensor is simply bound in the given mode: a reader can
+        // still be tapped directly by hand at any time regardless of what's bound to it, and that
+        // direct tap needs to show up on a receiver bound to this reader via the reader's own
+        // MODE-based broadcast (see CardReaderBlockEntity#getSignalSourceStrength). An override
+        // refreshed every tick with no regard for shouldTrigger would never actually expire while
+        // this sensor stays bound, permanently shadowing the reader's own MODE and silencing every
+        // direct tap - exactly the bug this gating avoids.
+        if (reader != null && shouldTrigger && be.boundReaderMode == BoundReaderMode.SENSOR_CENTRIC_SIMULTANEOUS) {
+            // a receiver bound to the reader should be indistinguishable from one bound straight
+            // to this sensor - see CardReaderBlockEntity#publishSensorRawSignal
+            reader.publishSensorRawSignal(level, detected);
+        }
 
+        // READER_ONLY drops the sensor's own local output entirely - the other two modes fire it
+        // alongside the reader's, same as this sensor always has, still also honoring its own
+        // external hold in case something else is separately driving *this* sensor (see
+        // MotionSensorBlockEntity#holdExternalSignal)
+        boolean ownOutputActive = be.boundReaderMode == BoundReaderMode.READER_ONLY
+                ? be.isExternallyHeld(now)
+                : shouldTrigger || be.isExternallyHeld(now);
+        applyPresent(level, pos, state, be, ownOutputActive);
+
+        if (reader != null && shouldTrigger && be.boundReaderMode == BoundReaderMode.SIMULTANEOUS) {
+            // SIMULTANEOUS's reader manages its own release independently of this sensor's own
+            // hold, so it can end up re-triggering repeatedly for as long as this sensor keeps
+            // detecting - see CardReaderBlockEntity#MOMENTARY_TICKS's own doc for why its wireless
+            // broadcast gets a short blip per re-trigger instead of this reader's own full
+            // held-open MODE
+            reader.keepSimultaneousBlipModeActive(level);
+        }
         if (reader == null || !shouldTrigger) {
             return;
         }
+        // SIMULTANEOUS deliberately does *not* mark the pulse externally-originated: the reader
+        // then manages its own release using its own configured signal length, independently of
+        // this sensor's own hold - the two named "*_SIMULTANEOUS" values only agree on both
+        // sides triggering together, not on whose timing wins, see BoundReaderMode's own doc
+        boolean externallyOriginated = be.boundReaderMode != BoundReaderMode.SIMULTANEOUS;
         BlockState readerState = level.getBlockState(readerPos);
         if (readerState.getValue(CardReaderBlock.MODE) != CardReaderMode.ACCEPTED
                 && readerState.getBlock() instanceof CardReaderBlock readerBlock) {
-            // rising edge: trigger the reader exactly like a physical tap, marking the pulse as
-            // externally-originated so CardReaderBlock#tickPulseTimeout knows to release it the
-            // instant we stop holding it rather than waiting out the reader's own configured
-            // length - see that method's own doc.
-            readerBlock.acceptPulse(readerState, level, readerPos, null, true);
+            // rising edge: trigger the reader exactly like a physical tap
+            readerBlock.acceptPulse(readerState, level, readerPos, null, externallyOriginated);
+            if (be.boundReaderMode == BoundReaderMode.SIMULTANEOUS) {
+                // overrides acceptPulse's own MODE-based publish with this re-trigger's own blip
+                reader.markSignalSourceTriggered();
+            }
         }
-        // keep it held open every tick this stays true - CardReaderBlock#tickPulseTimeout is the
-        // only thing that ever releases it, see that method's own doc for why
-        reader.holdExternalSignal(now + HOLD_BUFFER_TICKS);
+        if (externallyOriginated) {
+            // keep it held open every tick this stays true - CardReaderBlock#tickPulseTimeout is
+            // the only thing that ever releases it, see that method's own doc for why
+            reader.holdExternalSignal(now + HOLD_BUFFER_TICKS);
+        }
+        // SIMULTANEOUS: no hold call - the reader was triggered as an ordinary (non-externally-
+        // originated) pulse above, so it releases on its own schedule regardless of what this
+        // sensor keeps detecting, and will simply re-trigger again next time MODE has cycled back
+        // off if shouldTrigger is still true - an independent, possibly-repeating pulse train
     }
 
-    private static void tickBoundToSensor(Level level, BlockPos pos, BlockState state, AdvancedSensorBlockEntity be, BlockPos targetPos) {
+    private static void tickBoundToSensor(Level level, BlockPos pos, BlockState state, AdvancedSensorBlockEntity be, UUID targetId) {
         long now = level.getGameTime();
-        boolean shouldTrigger = MotionSensorBlockEntity.computeShouldSignal(level, pos, state, be, now);
+        DetectionResult detection = MotionSensorBlockEntity.computeShouldSignal(level, pos, state, be, now);
+        boolean shouldTrigger = detection.withLinger();
+        be.publishRawSignal(level, detection.raw());
 
         // own local output as always, also honoring its own external hold in case this sensor is
         // itself simultaneously the target of another binding (the mutual advanced-advanced case)
         applyPresent(level, pos, state, be, shouldTrigger || be.isExternallyHeld(now));
 
-        if (shouldTrigger && level.getBlockEntity(targetPos) instanceof MotionSensorBlockEntity target) {
+        BlockPos targetPos = shouldTrigger && level instanceof ServerLevel serverLevel
+                ? DeviceIndex.get(serverLevel).getPosition(targetId) : null;
+        if (targetPos != null && level.getBlockEntity(targetPos) instanceof MotionSensorBlockEntity target) {
             target.holdExternalSignal(now + HOLD_BUFFER_TICKS);
         }
+    }
+
+    /**
+     * Resolves {@link #legacyBoundReaderPos}/{@link #legacyBoundSensorPos} (pre-0.1.8 saves) into
+     * {@link #boundReaderId}/{@link #boundSensorId}, best-effort - only if the target's chunk
+     * happens to already be loaded right now (no forced loading). Unresolvable ones are silently
+     * dropped; either way the legacy fields are cleared after this one attempt. Mirrors
+     * {@code CardReaderBlockEntity#resolveLegacyLinkedReaders}.
+     */
+    private void resolveLegacyBinding() {
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        if (legacyBoundReaderPos != null && serverLevel.hasChunk(legacyBoundReaderPos.getX() >> 4, legacyBoundReaderPos.getZ() >> 4)
+                && serverLevel.getBlockEntity(legacyBoundReaderPos) instanceof CardReaderBlockEntity target) {
+            boundReaderId = target.getDeviceId();
+            this.setChanged();
+        } else if (legacyBoundSensorPos != null && serverLevel.hasChunk(legacyBoundSensorPos.getX() >> 4, legacyBoundSensorPos.getZ() >> 4)
+                && serverLevel.getBlockEntity(legacyBoundSensorPos) instanceof MotionSensorBlockEntity target) {
+            boundSensorId = target.getDeviceId();
+            this.setChanged();
+        }
+        legacyBoundReaderPos = null;
+        legacyBoundSensorPos = null;
+    }
+
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        resolveLegacyBinding();
     }
 
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        if (boundReaderPos != null) {
-            tag.put("BoundReader", NbtUtils.writeBlockPos(boundReaderPos));
+        if (boundReaderId != null) {
+            tag.putUUID("BoundReaderId", boundReaderId);
+            tag.putString("BoundReaderMode", boundReaderMode.name());
         }
-        if (boundSensorPos != null) {
-            tag.put("BoundSensor", NbtUtils.writeBlockPos(boundSensorPos));
+        if (boundSensorId != null) {
+            tag.putUUID("BoundSensorId", boundSensorId);
         }
         if (accentColor != null) {
             tag.putString("AccentColor", accentColor.getSerializedName());
@@ -299,8 +415,21 @@ public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity {
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        boundReaderPos = tag.contains("BoundReader") ? NbtUtils.readBlockPos(tag, "BoundReader").orElse(null) : null;
-        boundSensorPos = tag.contains("BoundSensor") ? NbtUtils.readBlockPos(tag, "BoundSensor").orElse(null) : null;
+        if (tag.hasUUID("BoundReaderId")) {
+            boundReaderId = tag.getUUID("BoundReaderId");
+            legacyBoundReaderPos = null;
+            boundReaderMode = BoundReaderMode.byName(tag.getString("BoundReaderMode"));
+        } else {
+            boundReaderId = null;
+            legacyBoundReaderPos = tag.contains("BoundReader") ? NbtUtils.readBlockPos(tag, "BoundReader").orElse(null) : null;
+        }
+        if (tag.hasUUID("BoundSensorId")) {
+            boundSensorId = tag.getUUID("BoundSensorId");
+            legacyBoundSensorPos = null;
+        } else {
+            boundSensorId = null;
+            legacyBoundSensorPos = tag.contains("BoundSensor") ? NbtUtils.readBlockPos(tag, "BoundSensor").orElse(null) : null;
+        }
         accentColor = tag.contains("AccentColor") ? DyeColor.byName(tag.getString("AccentColor"), null) : null;
     }
 }

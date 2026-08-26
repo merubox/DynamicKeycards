@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "I": {
+      "tag": "c:ingots/iron"
+    },
+    "L": {
+      "item": "minecraft:lightning_rod"
+    },
+    "K": {
+      "item": "dynamickeycards:dk_chip"
+    }
+  },
+  "pattern": [
+    "ILI",
+    " K ",
+    "I I"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dynamickeycards:receiver"
+  },
+  "show_notification": true
+}

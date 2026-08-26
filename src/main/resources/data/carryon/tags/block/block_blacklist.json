@@ -6,6 +6,12 @@
     "dynamickeycards:swipe_card_reader",
     "dynamickeycards:advanced_card_reader",
     "dynamickeycards:obsidian_card_reader",
-    "dynamickeycards:card_duplicator"
+    "dynamickeycards:card_duplicator",
+    "dynamickeycards:transmitter",
+    "dynamickeycards:receiver",
+    "dynamickeycards:wall_sensor",
+    "dynamickeycards:ceiling_sensor",
+    "dynamickeycards:advanced_wall_sensor",
+    "dynamickeycards:advanced_ceiling_sensor"
   ]
 }

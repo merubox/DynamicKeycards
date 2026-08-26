@@ -6,9 +6,12 @@ import com.mbx.dynamickeycards.block.AdvancedWallSensorBlock;
 import com.mbx.dynamickeycards.block.CardDuplicatorBlock;
 import com.mbx.dynamickeycards.block.CardReaderBlock;
 import com.mbx.dynamickeycards.block.CeilingSensorBlock;
+import com.mbx.dynamickeycards.block.ReceiverBlock;
+import com.mbx.dynamickeycards.block.TransmitterBlock;
 import com.mbx.dynamickeycards.block.WallSensorBlock;
 import com.mbx.dynamickeycards.item.BoundSensorBlockItem;
 import com.mbx.dynamickeycards.item.LinkedReaderBlockItem;
+import com.mbx.dynamickeycards.item.ReceiverBlockItem;
 import com.mbx.dynamickeycards.item.SensorBlockItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -67,6 +70,12 @@ public class DKBlocks {
             () -> new AdvancedWallSensorBlock(advancedSensorProps()), BoundSensorBlockItem::new);
     public static final DeferredBlock<Block> ADVANCED_CEILING_SENSOR = register("advanced_ceiling_sensor",
             () -> new AdvancedCeilingSensorBlock(advancedSensorProps()), BoundSensorBlockItem::new);
+
+    /** No local physical redstone output of its own - see {@code TransmitterBlockEntity}'s own doc - so a plain {@link BlockItem} is enough. */
+    public static final DeferredBlock<Block> TRANSMITTER = register("transmitter", () -> new TransmitterBlock(props()));
+    /** The item form is a {@link ReceiverBlockItem} instead of a plain {@link BlockItem} so it can be bound to a source before placement. */
+    public static final DeferredBlock<Block> RECEIVER = register("receiver",
+            () -> new ReceiverBlock(props()), ReceiverBlockItem::new);
 
     private static DeferredBlock<Block> registerReader(String name) {
         return register(name, () -> new CardReaderBlock(props()), LinkedReaderBlockItem::new);

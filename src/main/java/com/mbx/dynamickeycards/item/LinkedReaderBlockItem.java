@@ -4,7 +4,6 @@ import com.mbx.dynamickeycards.DKMessages;
 import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.registry.DKComponents;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -18,6 +17,7 @@ import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * The item form of a card reader, before it's ever placed. Right-clicking an existing reader
@@ -35,12 +35,12 @@ public class LinkedReaderBlockItem extends BlockItem {
         super(block, properties);
     }
 
-    public void linkTo(ItemStack stack, BlockPos readerPos) {
-        stack.set(DKComponents.LINKED_READER.get(), readerPos);
+    public void linkTo(ItemStack stack, UUID readerId) {
+        stack.set(DKComponents.LINKED_READER.get(), readerId);
     }
 
     @Nullable
-    public static BlockPos linkedReader(ItemStack stack) {
+    public static UUID linkedReader(ItemStack stack) {
         return stack.get(DKComponents.LINKED_READER.get());
     }
 

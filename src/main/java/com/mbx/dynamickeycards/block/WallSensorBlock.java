@@ -1,9 +1,11 @@
 package com.mbx.dynamickeycards.block;
 
-import com.mbx.dynamickeycards.compat.create.CreateLinkCompat;
+import com.mbx.dynamickeycards.DKSounds;
 import com.mojang.serialization.MapCodec;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
@@ -30,13 +32,18 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.neoforge.common.Tags;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.UUID;
+
 /**
  * A motion sensor mounted flush against a wall (8x2x2, a thin bar), never on a floor or
  * ceiling. Outputs a redstone signal for as long as a living entity is in the two-cell column
  * at its position (see {@link MotionSensorBlock#detectionZone}) - unlike the card reader, this
  * is a level (not pulsed) signal, matching an automatic-door sensor rather than a swipe reader.
  * Same wrench UI/pickup as the reader (see {@link WrenchConfigurableBlock}), minus anything
- * keycard-related - no owner binding, so anyone can wrench it up, not just whoever placed it.
+ * keycard-related - this block itself has no owner binding of its own, so anyone can wrench it
+ * up regardless of who placed it, unless it's currently bound to a reader (see
+ * {@code AdvancedSensorBlockEntity#getBoundReader}), in which case {@link #useItemOn} gates it by
+ * that reader's own owner instead (see {@link MaintenanceAccess}).
  */
 public class WallSensorBlock extends HorizontalDirectionalBlock implements EntityBlock, MotionSensorBlock, WrenchConfigurableBlock {
 
@@ -102,10 +109,10 @@ public class WallSensorBlock extends HorizontalDirectionalBlock implements Entit
     }
 
     /**
-     * Attaches to whichever face was actually right-clicked - not, as an earlier version did,
-     * a guess based on the player's general view angle ({@code getNearestLookingDirections()},
-     * the same approach vanilla's own {@code LadderBlock} uses). That guess doesn't always land
-     * on the face actually clicked, which read as the sensor attaching to the wrong wall.
+     * Attaches to whichever face was actually right-clicked. Deliberately not
+     * {@code getNearestLookingDirections()} (what vanilla's {@code LadderBlock} uses): that
+     * guesses from the player's view angle and doesn't always land on the clicked face, which
+     * reads as the sensor attaching to the wrong wall.
      */
     @Nullable
     @Override
@@ -149,11 +156,11 @@ public class WallSensorBlock extends HorizontalDirectionalBlock implements Entit
     }
 
     /**
-     * Create wrench only - reacts only when Create is loaded, same as the reader (without
-     * Create there's no Redstone Link network for the config UI's mode buttons to mean
-     * anything). Standing opens the config menu; sneaking picks the sensor up after a
-     * confirming second click. No ownership check - unlike the reader, a sensor has no
-     * access-control config worth protecting.
+     * A wrench-tagged item (any mod's - not Create-gated, see {@code CardReaderBlock}'s own
+     * wrench-branch doc for why) or either maintenance card. Standing opens the config menu;
+     * sneaking picks the sensor up after a confirming second click - gated by
+     * {@link MaintenanceAccess} only while bound to a reader (a plain sensor, or an advanced one
+     * that's unbound/bound to another sensor, has no owner in the relationship to protect).
      */
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
@@ -168,11 +175,24 @@ public class WallSensorBlock extends HorizontalDirectionalBlock implements Entit
                 return rangeResult;
             }
         }
-        if (stack.isEmpty() || !CreateLinkCompat.isLoaded() || !stack.is(Tags.Items.TOOLS_WRENCH)) {
+        boolean isWrench = stack.is(Tags.Items.TOOLS_WRENCH);
+        if (stack.isEmpty() || !(isWrench || MaintenanceAccess.isMaintenanceCard(stack))) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
         if (!(level.getBlockEntity(pos) instanceof MotionSensorBlockEntity sensor)) {
             return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        }
+        // only a sensor actually bound to a reader is gated at all - a plain sensor, or an
+        // advanced one that's unbound/bound to another sensor, has no owner in the relationship
+        // to protect (see MaintenanceAccess's own doc)
+        UUID boundReaderId = sensor instanceof AdvancedSensorBlockEntity advanced ? advanced.getBoundReader() : null;
+        if (!MaintenanceAccess.hasReaderLinkedAccess(player, stack, level, boundReaderId)) {
+            if (!level.isClientSide) {
+                player.displayClientMessage(
+                        Component.translatable("dynamickeycards.link_device.maintenance_denied").withStyle(ChatFormatting.RED), true);
+                DKSounds.deny(level, pos);
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
         if (player.isShiftKeyDown()) {
             return wrenchPickup(state, level, pos, player, sensor);
@@ -187,5 +207,11 @@ public class WallSensorBlock extends HorizontalDirectionalBlock implements Entit
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
         return super.useWithoutItem(state, level, pos, player, hit);
+    }
+
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
+        MotionSensorBlockEntity.onRemoved(level, pos, state, newState, moved);
+        super.onRemove(state, level, pos, newState, moved);
     }
 }

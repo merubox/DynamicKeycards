@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": {
+      "tag": "c:ingots/copper"
+    },
+    "G": {
+      "tag": "c:ingots/gold"
+    },
+    "R": {
+      "tag": "c:dusts/redstone"
+    },
+    "Q": {
+      "tag": "c:gems/quartz"
+    },
+    "N": {
+      "tag": "c:nuggets/iron"
+    }
+  },
+  "pattern": [
+    " P ",
+    "GRQ",
+    "NNN"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dynamickeycards:dk_chip"
+  },
+  "show_notification": true
+}

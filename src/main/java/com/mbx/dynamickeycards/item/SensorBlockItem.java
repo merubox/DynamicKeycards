@@ -11,9 +11,8 @@ import net.minecraft.world.level.block.Block;
 import java.util.List;
 
 /**
- * Adds the summary tooltip shared by both plain sensor blocks (wall/ceiling) - previously
- * neither had any tooltip at all, unlike every other item in the mod. {@link BoundSensorBlockItem}
- * extends this rather than {@link BlockItem} directly so the advanced sensor's tooltip covers the
+ * Adds the summary tooltip shared by both plain sensor blocks (wall/ceiling).
+ * {@link BoundSensorBlockItem} extends this rather than {@link BlockItem} directly so the advanced sensor's tooltip covers the
  * base detection behavior too, not just the binding-specific part.
  */
 public class SensorBlockItem extends BlockItem {

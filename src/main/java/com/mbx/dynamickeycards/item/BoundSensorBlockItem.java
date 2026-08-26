@@ -5,7 +5,6 @@ import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.DKTooltips;
 import com.mbx.dynamickeycards.registry.DKComponents;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -18,6 +17,7 @@ import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * The item form of an advanced sensor (wall or ceiling), before it's ever placed. Binding
@@ -27,12 +27,11 @@ import java.util.List;
  * <ul>
  *   <li>a card reader, stamping {@link DKComponents#BOUND_READER} - the sensor drives that
  *   reader's accept pulse remotely; or</li>
- *   <li>another sensor (plain or advanced), stamping {@link DKComponents#BOUND_SENSOR} - the
- *   sensor drives that target's own signal remotely the same way. If the target is itself an
- *   advanced sensor, the binding becomes mutual once placed (see
- *   {@code AdvancedSensorBlockEntity#applyPlacedBinding}) so each drives the other; a plain
- *   target only ever gets driven, never drives back - that asymmetry is why only advanced
- *   sensors carry this item's binding capability in the first place.</li>
+ *   <li>another advanced sensor (a plain sensor is never a valid target - see
+ *   {@code MotionSensorBlock#tryBindItemInteraction}'s own doc), stamping
+ *   {@link DKComponents#BOUND_SENSOR} - the sensor drives that target's own signal remotely the
+ *   same way. The binding becomes mutual once placed (see
+ *   {@code AdvancedSensorBlockEntity#applyPlacedBinding}) so each drives the other.</li>
  * </ul>
  * The two are mutually exclusive: binding to one clears the other, since a sensor can only be
  * bound to one thing at a time. Placing the item then carries whichever is set into the new
@@ -44,23 +43,23 @@ public class BoundSensorBlockItem extends SensorBlockItem {
         super(block, properties);
     }
 
-    public void bindTo(ItemStack stack, BlockPos readerPos) {
+    public void bindTo(ItemStack stack, UUID readerId) {
         stack.remove(DKComponents.BOUND_SENSOR.get());
-        stack.set(DKComponents.BOUND_READER.get(), readerPos);
+        stack.set(DKComponents.BOUND_READER.get(), readerId);
     }
 
     @Nullable
-    public static BlockPos boundReader(ItemStack stack) {
+    public static UUID boundReader(ItemStack stack) {
         return stack.get(DKComponents.BOUND_READER.get());
     }
 
-    public void bindToSensor(ItemStack stack, BlockPos sensorPos) {
+    public void bindToSensor(ItemStack stack, UUID sensorId) {
         stack.remove(DKComponents.BOUND_READER.get());
-        stack.set(DKComponents.BOUND_SENSOR.get(), sensorPos);
+        stack.set(DKComponents.BOUND_SENSOR.get(), sensorId);
     }
 
     @Nullable
-    public static BlockPos boundSensor(ItemStack stack) {
+    public static UUID boundSensor(ItemStack stack) {
         return stack.get(DKComponents.BOUND_SENSOR.get());
     }
 

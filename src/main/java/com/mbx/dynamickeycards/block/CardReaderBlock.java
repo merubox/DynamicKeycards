@@ -1,10 +1,11 @@
 package com.mbx.dynamickeycards.block;
 
+import com.mbx.dynamickeycards.DKNetwork;
+
 import com.mojang.serialization.MapCodec;
 import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.DKTooltips;
 import com.mbx.dynamickeycards.DKConfig;
-import com.mbx.dynamickeycards.compat.create.CreateLinkCompat;
 import com.mbx.dynamickeycards.item.BlankKeycardItem;
 import com.mbx.dynamickeycards.item.BoundSensorBlockItem;
 import com.mbx.dynamickeycards.item.CrewMemberKeycardItem;
@@ -12,6 +13,7 @@ import com.mbx.dynamickeycards.item.EstateKeycardItem;
 import com.mbx.dynamickeycards.item.GoldenKeycardItem;
 import com.mbx.dynamickeycards.item.KeycardItem;
 import com.mbx.dynamickeycards.item.LinkedReaderBlockItem;
+import com.mbx.dynamickeycards.item.ReceiverBlockItem;
 import com.mbx.dynamickeycards.registry.DKBlockEntities;
 import com.mbx.dynamickeycards.registry.DKComponents;
 import com.mbx.dynamickeycards.registry.DKItems;
@@ -123,10 +125,12 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         // point both readers at each other now that this one actually exists in the world - adds
         // to each reader's own set of links rather than replacing it, so linking a third reader
         // to an already-linked one extends the group instead of severing its existing link
-        BlockPos linkTarget = LinkedReaderBlockItem.linkedReader(stack);
-        if (linkTarget != null && level.getBlockEntity(linkTarget) instanceof CardReaderBlockEntity target) {
-            reader.addLinkedReader(linkTarget);
-            target.addLinkedReader(pos);
+        UUID linkTargetId = LinkedReaderBlockItem.linkedReader(stack);
+        BlockPos linkTargetPos = linkTargetId != null && level instanceof ServerLevel serverLevel
+                ? DeviceIndex.get(serverLevel).getPosition(linkTargetId) : null;
+        if (linkTargetPos != null && level.getBlockEntity(linkTargetPos) instanceof CardReaderBlockEntity target) {
+            reader.addLinkedReader(target.getDeviceId());
+            target.addLinkedReader(reader.getDeviceId());
             if (placer instanceof Player player) {
                 // green: unlike the white "tuned" message shown when the item was set to link,
                 // this is the point the link actually exists
@@ -151,8 +155,32 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             return InteractionResult.PASS;
         }
         if (reader.isRegisterMode()) {
+            // sneaking exits register mode - same sneak-only toggle gesture as everywhere else
+            // (see the class doc). Standing performs a reset, same as masterKeyInteract's own
+            // reset flow, but only for the owner - matches the class doc's "리더 자체가 해당
+            // 플레이어의 것일 때" exception (a bare hand can't fully stand in for a keycard, but
+            // it can for anything the owner themself is doing).
+            if (player.isShiftKeyDown()) {
+                if (!level.isClientSide) {
+                    cancelRegisterMode(level, pos, state, reader, player);
+                }
+                return InteractionResult.sidedSuccess(level.isClientSide);
+            }
+            if (!reader.isOwner(player)) {
+                return InteractionResult.PASS;
+            }
             if (!level.isClientSide) {
-                cancelRegisterMode(level, pos, state, reader, player);
+                if (reader.isResetPending()) {
+                    reader.clearCards();
+                    reader.setRegisterMode(false);
+                    setMode(level, pos, state, CardReaderMode.OFF);
+                    message(player, "reset_complete", ChatFormatting.WHITE);
+                    DKSounds.remove(level, pos);
+                } else {
+                    reader.armResetPending();
+                    message(player, "reset_confirm", ChatFormatting.RED);
+                    DKSounds.deny(level, pos);
+                }
             }
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
@@ -183,163 +211,128 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         if (stack.isEmpty()) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
-        // Create wrench: regardless of item type below. Only reacts when Create is loaded —
-        // without it there is no Redstone Link network for this to broadcast to, so a wrench
-        // should behave as if we don't exist.
-        if (CreateLinkCompat.isLoaded() && stack.is(Tags.Items.TOOLS_WRENCH)) {
-            if (!(level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader)) {
-                return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
-            }
-            if (player.isShiftKeyDown()) {
-                return wrenchSneakInteract(state, level, pos, player, reader);
-            }
-            // standing: open the config UI
-            return openLinkDeviceMenu(state, level, pos, player, reader);
+        if (stack.is(Tags.Items.TOOLS_WRENCH) || MaintenanceAccess.isMaintenanceCard(stack)) {
+            return maintenanceInteract(stack, state, level, pos, player);
         }
-        // Advanced sensor item, still unplaced: binds it to this reader instead of any of the
-        // usual keycard/wrench handling below - handled here rather than the item's own useOn so
-        // it isn't swallowed by the SKIP_DEFAULT_BLOCK_INTERACTION fallback a few lines down.
-        // Only while register mode is armed - the same gate registering/removing a card already
-        // requires, and since only the owner can arm it (see armRegisterMode), this doubles as
-        // the owner's consent to let something bind to their reader at all. Without this, anyone
-        // could quietly bind their own sensor or reader to someone else's, any time, unnoticed.
+        // The three unplaced-device items are handled here rather than in each item's own useOn,
+        // so they aren't swallowed by the SKIP_DEFAULT_BLOCK_INTERACTION fallback below.
         if (stack.getItem() instanceof BoundSensorBlockItem sensorItem) {
-            if (!(level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader) || !reader.isRegisterMode()) {
-                if (!level.isClientSide) {
-                    player.displayClientMessage(
-                            Component.translatable("dynamickeycards.link_device.needs_register_mode").withStyle(ChatFormatting.RED), true);
-                    DKSounds.deny(level, pos);
-                }
-                return ItemInteractionResult.sidedSuccess(level.isClientSide);
-            }
-            if (!level.isClientSide) {
-                sensorItem.bindTo(stack, pos);
-                // one register-mode arming grants exactly one tuning, same as one card
-                // registration - otherwise leaving register mode armed (nothing here times it
-                // out) would let every stranger who walks up before it's cancelled tune their own
-                // device to this reader, one after another
-                reader.setRegisterMode(false);
-                setMode(level, pos, state, CardReaderMode.OFF);
-                // white, not green: this only tunes the held item, the actual connection isn't
-                // "complete" (green) until it's placed - see AdvancedSensorBlockEntity#announcePlaced.
-                // No sound here - only the completed connection plays one.
-                player.displayClientMessage(
-                        Component.translatable("dynamickeycards.link_device.tuned").withStyle(ChatFormatting.WHITE), true);
-            }
-            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+            return bindSensorItem(sensorItem, stack, state, level, pos, player);
         }
-        // Reader item, still unplaced: sets it to link with this reader instead of any of the
-        // usual keycard/wrench handling below - same reasoning and the same register-mode gate
-        // as the sensor case above. Linking only shares registered/blocked cards (see
-        // CardReaderBlockEntity#accepts) - each reader keeps its own owner, mode/frequency, and
-        // pulse.
         if (stack.getItem() instanceof LinkedReaderBlockItem readerItem) {
-            if (!(level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader) || !reader.isRegisterMode()) {
-                if (!level.isClientSide) {
-                    player.displayClientMessage(
-                            Component.translatable("dynamickeycards.link_device.needs_register_mode").withStyle(ChatFormatting.RED), true);
-                    DKSounds.deny(level, pos);
-                }
-                return ItemInteractionResult.sidedSuccess(level.isClientSide);
-            }
-            if (!level.isClientSide) {
-                readerItem.linkTo(stack, pos);
-                // one register-mode arming grants exactly one tuning - see the sensor case above
-                reader.setRegisterMode(false);
-                setMode(level, pos, state, CardReaderMode.OFF);
-                // white, not green: see the sensor case above for why - no sound here either
-                player.displayClientMessage(
-                        Component.translatable("dynamickeycards.link_device.tuned").withStyle(ChatFormatting.WHITE), true);
-            }
-            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+            return linkReaderItem(readerItem, stack, state, level, pos, player);
+        }
+        if (stack.getItem() instanceof ReceiverBlockItem) {
+            return bindReceiverItem(stack, state, level, pos, player);
         }
         if (player.isSpectator() || !(stack.getItem() instanceof KeycardItem)
                 || !(level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader)) {
             return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
         }
+        return keycardInteract(stack, state, level, pos, player, hand, reader);
+    }
+
+    /**
+     * A wrench-tagged item (any mod's, not gated on Create) or either maintenance card. Standing
+     * opens the config UI, sneaking picks the reader up - both gated by {@link MaintenanceAccess}
+     * (the owner always has both; anyone else needs a golden or matching estate maintenance card).
+     */
+    private ItemInteractionResult maintenanceInteract(ItemStack stack, BlockState state, Level level,
+                                                      BlockPos pos, Player player) {
+        if (!(level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader)) {
+            return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        }
+        if (!MaintenanceAccess.hasAccess(player, stack, reader.getOwner())) {
+            if (!level.isClientSide) {
+                message(player, "not_bound", ChatFormatting.RED);
+                DKSounds.deny(level, pos);
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+        if (player.isShiftKeyDown()) {
+            return wrenchPickup(state, level, pos, player, reader);
+        }
+        return openLinkDeviceMenu(state, level, pos, player, reader);
+    }
+
+    /** Tunes an unplaced advanced sensor to this reader, so placing it completes the link. */
+    private ItemInteractionResult bindSensorItem(BoundSensorBlockItem sensorItem, ItemStack stack, BlockState state,
+                                                 Level level, BlockPos pos, Player player) {
+        CardReaderBlockEntity reader = armedReaderOrDeny(level, pos, player);
+        if (reader == null) {
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+        if (!level.isClientSide) {
+            sensorItem.bindTo(stack, reader.getDeviceId());
+            syncBoundItemToClient(player, reader, pos);
+            consumeArmingAndAnnounceTuned(level, pos, state, player, reader);
+        }
+        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    /**
+     * Tunes an unplaced reader to link with this one. Linking only shares registered/blocked cards
+     * (see {@link CardReaderBlockEntity#accepts}) - each reader keeps its own owner, mode/frequency,
+     * and pulse.
+     */
+    private ItemInteractionResult linkReaderItem(LinkedReaderBlockItem readerItem, ItemStack stack, BlockState state,
+                                                 Level level, BlockPos pos, Player player) {
+        CardReaderBlockEntity reader = armedReaderOrDeny(level, pos, player);
+        if (reader == null) {
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+        if (!level.isClientSide) {
+            readerItem.linkTo(stack, reader.getDeviceId());
+            syncBoundItemToClient(player, reader, pos);
+            consumeArmingAndAnnounceTuned(level, pos, state, player, reader);
+        }
+        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    /** Binds an unplaced receiver to this reader as its wireless source. */
+    private ItemInteractionResult bindReceiverItem(ItemStack stack, BlockState state, Level level,
+                                                   BlockPos pos, Player player) {
+        CardReaderBlockEntity reader = armedReaderOrDeny(level, pos, player);
+        if (reader == null) {
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+        if (!level.isClientSide) {
+            reader.setRegisterMode(false);
+            setMode(level, pos, state, CardReaderMode.OFF);
+        }
+        return SignalSource.tryBindReceiverItem(stack, level, pos, player, reader);
+    }
+
+    /**
+     * Pushes the freshly-tuned stack and this reader's position to the client immediately, rather
+     * than waiting for the next automatic per-tick sync. Without it the client can spend a visible
+     * stretch still holding its pre-bind copy, which is what kept the bind-target highlight from
+     * lighting up at the moment of binding.
+     */
+    private static void syncBoundItemToClient(Player player, CardReaderBlockEntity reader, BlockPos pos) {
+        player.containerMenu.broadcastChanges();
+        DKNetwork.registerDevicePosition(player, reader.getDeviceId(), pos);
+    }
+
+    /**
+     * Everything a {@link KeycardItem} does at a reader: the golden and matching estate cards act
+     * as master keys, register mode toggles the card's access, and otherwise the card either passes
+     * or is denied.
+     */
+    private ItemInteractionResult keycardInteract(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                                  Player player, InteractionHand hand, CardReaderBlockEntity reader) {
         boolean sneaking = player.isShiftKeyDown();
-        // The golden keycard is a master key for every reader; an Estate keycard is one for
-        // the readers owned by the player it's bound to. Both drive the same behavior.
+        // The golden keycard is a master key for every reader; an Estate keycard is one for the
+        // readers owned by the player it's bound to. Both drive the same behavior.
         if (stack.getItem() instanceof GoldenKeycardItem) {
             return masterKeyInteract(state, level, pos, player, sneaking, reader);
         }
         if (stack.getItem() instanceof EstateKeycardItem) {
-            UUID cardOwner = EstateKeycardItem.boundOwner(stack);
-            if (cardOwner != null && cardOwner.equals(reader.getOwner())) {
-                return masterKeyInteract(state, level, pos, player, sneaking, reader);
-            }
-            // unbound, or bound to a different owner's readers: no access here
-            if (sneaking) {
-                return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
-            }
-            if (!level.isClientSide) {
-                if (state.getValue(MODE) == CardReaderMode.OFF) {
-                    setMode(level, pos, state, CardReaderMode.DENIED);
-                    level.scheduleTick(pos, this, DENIED_TICKS);
-                }
-                message(player, "unregistered_card", ChatFormatting.RED);
-                DKSounds.deny(level, pos);
-            }
-            return ItemInteractionResult.CONSUME;
+            return estateKeycardInteract(stack, state, level, pos, player, sneaking, reader);
         }
         if (reader.isRegisterMode()) {
-            if (!sneaking) {
-                return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
-            }
             if (!level.isClientSide) {
-                // one press always toggles this card's access; the block list is an
-                // internal detail — players only ever see "registered"/"removed"
-                UUID ownKey = KeycardItem.ownKey(stack);
-                if (stack.getItem() instanceof CrewMemberKeycardItem) {
-                    // members are pure pass tokens bound to their manager: no registering,
-                    // no per-reader toggling — all control goes through the manager card
-                    message(player, "member_not_registerable", ChatFormatting.RED);
-                    DKSounds.deny(level, pos);
-                } else if (stack.getItem() instanceof BlankKeycardItem) {
-                    // a blank card is keyed and turned into a keycard on registration
-                    if (reader.getRegisteredCount() >= DKConfig.MAX_REGISTRATIONS_PER_READER.get()) {
-                        message(player, "register_limit", ChatFormatting.RED);
-                        DKSounds.deny(level, pos);
-                    } else {
-                        UUID key = UUID.randomUUID();
-                        ItemStack keyed = new ItemStack(DKItems.keycardFor(stack), stack.getCount());
-                        keyed.set(DKComponents.CARD_ID.get(), key);
-                        player.setItemInHand(hand, keyed);
-                        reader.registerCard(key);
-                        message(player, "register_complete", ChatFormatting.GREEN);
-                        DKSounds.confirm(level, pos);
-                    }
-                } else if (ownKey != null && reader.isBlocked(ownKey)) {
-                    reader.unblockCard(ownKey);
-                    message(player, "register_complete", ChatFormatting.GREEN);
-                    DKSounds.confirm(level, pos);
-                } else if (ownKey != null && reader.isRegistered(ownKey)) {
-                    reader.removeCard(ownKey);
-                    if (reader.isRegisteredAny(KeycardItem.inheritedKeys(stack))) {
-                        reader.blockCard(ownKey);
-                    }
-                    message(player, "register_removed", ChatFormatting.WHITE);
-                    DKSounds.remove(level, pos);
-                } else if (ownKey != null && reader.isRegisteredAny(KeycardItem.inheritedKeys(stack))) {
-                    // passes only through inherited keys: shut out just this card
-                    reader.blockCard(ownKey);
-                    message(player, "register_removed", ChatFormatting.WHITE);
-                    DKSounds.remove(level, pos);
-                } else if (reader.getRegisteredCount() >= DKConfig.MAX_REGISTRATIONS_PER_READER.get()) {
-                    message(player, "register_limit", ChatFormatting.RED);
-                    DKSounds.deny(level, pos);
-                } else {
-                    // keyed keycard, or a blank crew manager minting its group key
-                    if (ownKey == null) {
-                        ownKey = UUID.randomUUID();
-                        stack.set(DKComponents.CARD_ID.get(), ownKey);
-                    }
-                    reader.registerCard(ownKey);
-                    message(player, "register_complete", ChatFormatting.GREEN);
-                    DKSounds.confirm(level, pos);
-                }
-                reader.setRegisterMode(false);
-                setMode(level, pos, state, CardReaderMode.OFF);
+                toggleCardRegistration(stack, state, level, pos, player, hand, reader);
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
@@ -354,6 +347,127 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             this.acceptPulse(state, level, pos, player);
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
+        return denyUnregisteredCard(state, level, pos, player);
+    }
+
+    /** A matching estate card is a master key here; an unbound one, or one bound elsewhere, is just denied. */
+    private ItemInteractionResult estateKeycardInteract(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                                        Player player, boolean sneaking, CardReaderBlockEntity reader) {
+        UUID cardOwner = EstateKeycardItem.boundOwner(stack);
+        if (cardOwner != null && cardOwner.equals(reader.getOwner())) {
+            return masterKeyInteract(state, level, pos, player, sneaking, reader);
+        }
+        if (sneaking) {
+            return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        }
+        return denyUnregisteredCard(state, level, pos, player);
+    }
+
+    /**
+     * One press in register mode always toggles this card's access; the block list is an internal
+     * detail, so players only ever see "registered"/"removed". Sneaking isn't required - only the
+     * register-mode on/off toggle itself needs it (see this class's doc for the
+     * "등록모드 켜고 끄기만 웅크림 필수" gesture principle).
+     *
+     * <p>Server-side only; the caller checks that. Spends the arming either way, like every other
+     * register-mode action.
+     */
+    private void toggleCardRegistration(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                        Player player, InteractionHand hand, CardReaderBlockEntity reader) {
+        UUID ownKey = KeycardItem.ownKey(stack);
+        if (stack.getItem() instanceof CrewMemberKeycardItem) {
+            // members are pure pass tokens bound to their manager: no registering, no per-reader
+            // toggling - all control goes through the manager card
+            message(player, "member_not_registerable", ChatFormatting.RED);
+            DKSounds.deny(level, pos);
+        } else if (stack.getItem() instanceof BlankKeycardItem) {
+            // a blank card is keyed and turned into a keycard on registration
+            if (reader.getRegisteredCount() >= DKConfig.MAX_REGISTRATIONS_PER_READER.get()) {
+                message(player, "register_limit", ChatFormatting.RED);
+                DKSounds.deny(level, pos);
+            } else {
+                UUID key = UUID.randomUUID();
+                ItemStack keyed = new ItemStack(DKItems.keycardFor(stack), stack.getCount());
+                keyed.set(DKComponents.CARD_ID.get(), key);
+                player.setItemInHand(hand, keyed);
+                reader.registerCard(key);
+                message(player, "register_complete", ChatFormatting.GREEN);
+                DKSounds.confirm(level, pos);
+            }
+        } else if (ownKey != null && reader.isBlockedInGroup(ownKey)) {
+            reader.unblockInGroup(ownKey);
+            message(player, "register_complete", ChatFormatting.GREEN);
+            DKSounds.confirm(level, pos);
+        } else if (ownKey != null && reader.isRegisteredInGroup(ownKey)) {
+            // wherever in the linked group this card actually lives, not just here - see
+            // CardReaderBlockEntity#isRegisteredInGroup for the bug this avoids
+            reader.removeRegisteredFromGroup(ownKey);
+            if (reader.isRegisteredAnyInGroup(KeycardItem.inheritedKeys(stack))) {
+                reader.blockCard(ownKey);
+            }
+            message(player, "register_removed", ChatFormatting.WHITE);
+            DKSounds.remove(level, pos);
+        } else if (ownKey != null && reader.isRegisteredAnyInGroup(KeycardItem.inheritedKeys(stack))) {
+            // passes only through inherited keys: shut out just this card
+            reader.blockCard(ownKey);
+            message(player, "register_removed", ChatFormatting.WHITE);
+            DKSounds.remove(level, pos);
+        } else if (reader.getRegisteredCount() >= DKConfig.MAX_REGISTRATIONS_PER_READER.get()) {
+            message(player, "register_limit", ChatFormatting.RED);
+            DKSounds.deny(level, pos);
+        } else {
+            // keyed keycard, or a blank crew manager minting its group key
+            if (ownKey == null) {
+                ownKey = UUID.randomUUID();
+                stack.set(DKComponents.CARD_ID.get(), ownKey);
+            }
+            reader.registerCard(ownKey);
+            message(player, "register_complete", ChatFormatting.GREEN);
+            DKSounds.confirm(level, pos);
+        }
+        reader.setRegisterMode(false);
+        setMode(level, pos, state, CardReaderMode.OFF);
+    }
+
+    /**
+     * The reader at {@code pos} if it is currently in register mode, or {@code null} after telling
+     * the player why not. Binding a sensor, reader, or receiver item all go through this: register
+     * mode is the owner's consent, since only the owner can arm it (see {@link #armRegisterMode}).
+     * Without that gate anyone could quietly tune their own device to someone else's reader.
+     */
+    @Nullable
+    private CardReaderBlockEntity armedReaderOrDeny(Level level, BlockPos pos, Player player) {
+        if (level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader && reader.isRegisterMode()) {
+            return reader;
+        }
+        if (!level.isClientSide) {
+            player.displayClientMessage(
+                    Component.translatable("dynamickeycards.link_device.needs_register_mode").withStyle(ChatFormatting.RED), true);
+            DKSounds.deny(level, pos);
+        }
+        return null;
+    }
+
+    /**
+     * Spends the one tuning that arming register mode granted, then reports it. One arming grants
+     * exactly one tuning, same as one card registration - otherwise leaving register mode armed
+     * (nothing times it out) would let every stranger who walks up tune their own device to this
+     * reader, one after another.
+     *
+     * <p>White, not green: this only tunes the held item. The connection isn't "complete" (green)
+     * until it's placed - see {@code AdvancedSensorBlockEntity#announcePlaced} - and no sound
+     * plays here either, only the completed connection gets one.
+     */
+    private void consumeArmingAndAnnounceTuned(Level level, BlockPos pos, BlockState state,
+                                               Player player, CardReaderBlockEntity reader) {
+        reader.setRegisterMode(false);
+        setMode(level, pos, state, CardReaderMode.OFF);
+        player.displayClientMessage(
+                Component.translatable("dynamickeycards.link_device.tuned").withStyle(ChatFormatting.WHITE), true);
+    }
+
+    /** The shared "this card doesn't open this reader" response: red light for {@link #DENIED_TICKS}, message, deny sound. */
+    private ItemInteractionResult denyUnregisteredCard(BlockState state, Level level, BlockPos pos, Player player) {
         if (!level.isClientSide) {
             if (state.getValue(MODE) == CardReaderMode.OFF) {
                 setMode(level, pos, state, CardReaderMode.DENIED);
@@ -367,29 +481,32 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
 
     /**
      * Master-key behavior shared by the golden keycard and a matching Estate keycard: in
-     * register mode, sneaking asks to confirm / performs the full reset and standing cancels;
-     * otherwise sneaking arms register mode and standing pulses the reader open.
+     * register mode, sneaking cancels register mode and standing asks to confirm / performs the
+     * full reset; otherwise sneaking arms register mode and standing pulses the reader open.
+     * (The register-mode pair reads "backwards" on purpose - toggling register mode off is the
+     * one gesture that stays sneak-gated, so the reset had to move to standing.)
      */
     private ItemInteractionResult masterKeyInteract(BlockState state, Level level, BlockPos pos,
                                                     Player player, boolean sneaking, CardReaderBlockEntity reader) {
         if (reader.isRegisterMode()) {
+            // sneaking exits register mode - the on/off toggle is the one gesture that stays
+            // sneak-gated (see the class doc); standing performs the reset instead, so it (like
+            // every other in-register-mode action) no longer needs sneaking.
             if (!level.isClientSide) {
                 if (sneaking) {
-                    if (reader.isResetPending()) {
-                        // confirmed: wipe every registered card
-                        reader.clearCards();
-                        reader.setRegisterMode(false);
-                        setMode(level, pos, state, CardReaderMode.OFF);
-                        message(player, "reset_complete", ChatFormatting.WHITE);
-                        DKSounds.remove(level, pos);
-                    } else {
-                        // a full reset is destructive — ask for a confirming second click
-                        reader.armResetPending();
-                        message(player, "reset_confirm", ChatFormatting.RED);
-                        DKSounds.deny(level, pos);
-                    }
-                } else {
                     cancelRegisterMode(level, pos, state, reader, player);
+                } else if (reader.isResetPending()) {
+                    // confirmed: wipe every registered card
+                    reader.clearCards();
+                    reader.setRegisterMode(false);
+                    setMode(level, pos, state, CardReaderMode.OFF);
+                    message(player, "reset_complete", ChatFormatting.WHITE);
+                    DKSounds.remove(level, pos);
+                } else {
+                    // a full reset is destructive — ask for a confirming second click
+                    reader.armResetPending();
+                    message(player, "reset_confirm", ChatFormatting.RED);
+                    DKSounds.deny(level, pos);
                 }
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
@@ -412,31 +529,12 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
     }
 
     /**
-     * Sneak + Create wrench: only the reader's owner may pick it up (protects its
-     * access-control config from being carried off by anyone else) - a non-owner gets the same
-     * "not_bound" response as a sneak-click with a bare hand. The actual confirm-then-pickup
-     * mechanic is shared with the motion sensors, see {@link #wrenchPickup}.
-     */
-    private ItemInteractionResult wrenchSneakInteract(BlockState state, Level level, BlockPos pos,
-                                                       Player player, CardReaderBlockEntity reader) {
-        if (!reader.isOwner(player)) {
-            if (!level.isClientSide) {
-                message(player, "not_bound", ChatFormatting.RED);
-                DKSounds.deny(level, pos);
-            }
-            return ItemInteractionResult.sidedSuccess(level.isClientSide);
-        }
-        return wrenchPickup(state, level, pos, player, reader);
-    }
-
-    /**
-     * The accept pulse's own "turn off" no longer goes through {@link Level#scheduleTick} -
-     * a level only ever keeps one pending scheduled tick per (position, block) pair (it
-     * silently drops a second one, regardless of the delay), so re-scheduling a shorter tick
-     * after a mid-pulse length change was a no-op against the tick already queued when the
-     * pulse started. {@link #tickPulseTimeout} checks the elapsed time against the reader's
-     * current pulse length every game tick instead, so a length change takes effect on the
-     * very next tick, whichever direction it moves.
+     * The accept pulse's "turn off" deliberately avoids {@link Level#scheduleTick}: a level
+     * keeps only one pending scheduled tick per (position, block) pair and silently drops a
+     * second one, so a mid-pulse length change could never re-schedule against the tick queued
+     * when the pulse started. {@link #tickPulseTimeout} compares elapsed time against the
+     * reader's current pulse length every game tick instead, so a length change takes effect on
+     * the very next tick, whichever direction it moves.
      *
      * <p>Package-visible (not private) so {@code AdvancedSensorBlockEntity} can trigger the
      * exact same accept - sound, visuals, redstone, everything - as an ambient card-possession
@@ -466,6 +564,8 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             reader.onPulseStarted(externallyOriginated);
             // mirrors the accept pulse onto Create's Redstone Link network, if any
             reader.notifyLinkChanged();
+            // and onto this mod's own wireless system - see CardReaderBlockEntity#getSignalSourceStrength
+            reader.publishSignalSource(level);
         }
         level.gameEvent(player, GameEvent.BLOCK_ACTIVATE, pos);
     }
@@ -478,6 +578,7 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         return (lvl, pos, st, be) -> {
             if (be instanceof CardReaderBlockEntity reader) {
                 tickPulseTimeout(lvl, pos, st, reader);
+                reader.tickSignalSourcePublish(lvl);
             }
         };
     }
@@ -529,6 +630,10 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         level.gameEvent(null, GameEvent.BLOCK_DEACTIVATE, pos);
         if (reader != null) {
             reader.notifyLinkChanged();
+            // see CardReaderBlockEntity#getSignalSourceStrength - the accept pulse ending is a
+            // MODE transition too, so the wireless broadcast needs its own push here just like
+            // acceptPulse's rising-edge one, not just whatever the next incidental publish catches
+            reader.publishSignalSource(level);
         }
     }
 
@@ -572,12 +677,20 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             return;
         }
         // tell every reader this one was linked to that the link is gone - otherwise a stale
-        // position lingers in their own set, and if a different, unrelated reader ever gets
-        // placed at this same spot later, it'd be silently pulled into their group from one side
-        if (!level.isClientSide && level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader) {
-            for (BlockPos linkedPos : reader.getLinkedReaders()) {
-                if (level.getBlockEntity(linkedPos) instanceof CardReaderBlockEntity linked) {
-                    linked.removeLinkedReader(pos);
+        // id lingers in their own set (harmless on its own, since a fresh reader always gets a
+        // fresh id and could never be mistaken for this one, but still worth keeping tidy for
+        // anything that reads getLinkedReaders() directly)
+        if (level.getBlockEntity(pos) instanceof CardReaderBlockEntity reader) {
+            if (level.isClientSide) {
+                ClientDeviceCache.unregister(reader.getDeviceId());
+            } else if (level instanceof ServerLevel serverLevel) {
+                DeviceIndex index = DeviceIndex.get(serverLevel);
+                index.unregister(reader.getDeviceId());
+                for (UUID linkedId : reader.getLinkedReaders()) {
+                    BlockPos linkedPos = index.getPosition(linkedId);
+                    if (linkedPos != null && level.getBlockEntity(linkedPos) instanceof CardReaderBlockEntity linked) {
+                        linked.removeLinkedReader(reader.getDeviceId());
+                    }
                 }
             }
         }

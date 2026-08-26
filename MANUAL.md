@@ -2,7 +2,7 @@
 
 [한국어 버전 (Korean version)](MANUAL_KO.md)
 
-For version 0.1.7. Every interaction is a **right-click**; "sneak" means holding Shift.
+For version 0.1.8. Every interaction is a **right-click**; "sneak" means holding Shift.
 
 ---
 
@@ -54,6 +54,41 @@ All item types appear in the **Dynamic Keycards** creative tab. In survival, key
 - The binding lives on the card, so it **keeps working after you hand it to someone
   else**. It can't be registered or duplicated.
 
+### Golden / Estate Maintenance Cards (maintenance tier)
+
+Where keycards govern **passing and registering**, maintenance cards govern **configuring
+and picking up devices**: open a device's config screen, and pick the device up into your
+inventory.
+
+- **Golden Maintenance Card**: passes the maintenance tier on **every device,
+  unconditionally**, regardless of ownership. The maintenance-tier counterpart of the
+  golden keycard.
+- **Estate Maintenance Card**: activated **exactly like the estate keycard** (two-click
+  confirm, binds to you). Once bound, it covers **the readers you placed and the
+  peripherals linked to them**.
+
+**Which devices are locked, and which are not** — this split is the whole point of the tier:
+
+| Group | Devices | Who may use the maintenance tier |
+|---|---|---|
+| **Locked** | Card readers, plus peripherals **linked to** one (an advanced sensor bound to a reader, a receiver whose source is a reader) | That reader's **owner**, a **golden maintenance card**, or an **estate maintenance card bound to that same owner**. Someone else's estate card does not work. |
+| **Lock-free** | Transmitters, receivers not tied to a reader, sensors that are unbound or bound to another sensor, the card duplicator | **Anyone** — a wrench or *either* maintenance card opens them. These devices have no owner concept at all. |
+
+So an estate maintenance card works on **every lock-free device regardless of who it's
+bound to**, and only checks whose card it is on locked ones. Transmitters and receivers are
+plain wireless-redstone gear with no lock of their own; they inherit a reader's lock only
+for as long as they're linked to one.
+
+- Neither maintenance card has a recipe from raw materials — each is **swapped 1:1 with its
+  matching keycard** on a crafting table (golden keycard ↔ golden maintenance card, estate
+  keycard ↔ estate maintenance card). **The binding survives the swap**, so an estate card
+  already bound to you is still yours after switching tiers.
+
+### DK Chip (crafting material)
+A component used across the mod's devices. It has no behavior of its own; it goes into the
+five card readers, the sensors, the transmitter, the receiver, and the estate keycard
+(see §6).
+
 ---
 
 ## 2. Card Readers (5 variants)
@@ -67,7 +102,7 @@ Placeable on floors, walls, and ceilings.
 - Once the owner **registers** a card, that card operates the reader.
 - Using a registered card (standing) emits a **brief redstone signal** (strength 15,
   strongly powering the mounting face). The default length is 3 seconds, configurable
-  via `defaultPulseLengthTicks` (see §8).
+  via `defaultPulseLengthTicks` (see §9).
 - One card can be registered on many readers, and one reader can hold many cards.
 - Forked cards are managed **individually**: removing one card's registration only
   stops that card — related copies keep working.
@@ -110,17 +145,25 @@ Results are audible too: **pass = high bell**, **registered = bright pling**,
 
 **Register mode armed** (same for owner and non-owner)
 
+> **Gesture principle**: toggling register mode on and off is the **only** gesture that
+> requires sneaking. Everything else — registering/unregistering cards, binding devices,
+> resetting — works standing or sneaking alike. So inside register mode the split is
+> "sneak = leave register mode", "standing = everything else".
+
 | Action | Result |
 |---|---|
-| Bare-hand click (standing or sneaking) | Cancel register mode ("Registration cancelled") |
-| Sneaking + a card this reader accepts | **Unregister** ("Registration removed") — only this card; related copies keep working |
-| Sneaking + a blank card | **Register** — the blank card becomes a same-color **keycard** with a fresh key ("Registration complete", green) |
-| Sneaking + a keyed card this reader rejects | **Register** ("Registration complete", green) |
-| Sneaking + a member card | "Member access cards can't be registered" (red) |
-| Standing + card | Nothing |
-| Standing + golden keycard | Cancel register mode |
-| Sneaking + golden keycard (1st) | **Confirm reset** — "Sneak-click again to wipe every registered card" (red) |
-| Sneaking + golden keycard (2nd) | **Full reset** — wipes every registered card ("Card reader has been reset") |
+| Sneaking + bare hand | Cancel register mode ("Registration cancelled") |
+| Standing + bare hand (owner only) | **Reset** — same two-click confirm as the golden card rows below |
+| A card (standing or sneaking) this reader accepts | **Unregister** ("Registration removed") — only this card; related copies keep working |
+| A card (standing or sneaking) — a blank card | **Register** — the blank card becomes a same-color **keycard** with a fresh key ("Registration complete", green) |
+| A card (standing or sneaking) — a keyed card this reader rejects | **Register** ("Registration complete", green) |
+| A card (standing or sneaking) — a member card | "Member access cards can't be registered" (red) |
+| Sneaking + golden keycard | Cancel register mode |
+| Standing + golden keycard (1st) | **Confirm reset** — "Click again to wipe every registered card" (red) |
+| Standing + golden keycard (2nd) | **Full reset** — wipes every registered card ("Card reader has been reset") |
+
+An estate keycard behaves exactly like the golden keycard rows above, **but only if it is
+bound to that reader's owner**.
 
 ### Linking to another reader
 - The target reader must be in register mode first (see the interaction table
@@ -226,7 +269,7 @@ ceiling block and is fully symmetric (no facing).
   reader's signal does.
 - **Release delay**: configurable per sensor, how long the signal keeps going after
   the last detection (0 ticks cuts it the instant nothing's left). Same adjustment
-  screen as a reader's signal length — see the Create notes in §6.
+  screen as a reader's signal length — see the Create notes in §7.
 - **No ownership** — anyone can configure or pick one up.
 - Breaking a sensor loses its configuration (range, release delay, and, for the
   advanced tier, its binding and color too).
@@ -292,8 +335,8 @@ ceiling block and is fully symmetric (no facing).
   already undyed).
 
 ### Recipes
-- **Wall Sensor** (makes 2): iron ingot ×3 / redstone – observer – redstone / black
-  stained glass ×3.
+- **Wall Sensor** (makes 2): (empty) – DK chip – (empty) / iron ingot – observer – iron
+  ingot / black stained glass ×3.
 - **Advanced Wall Sensor** (makes 2): the same layout with gold ingots instead of
   iron.
 - **Ceiling Sensor** / **Advanced Ceiling Sensor**: no recipe of their own — put a
@@ -302,10 +345,69 @@ ceiling block and is fully symmetric (no facing).
 
 ---
 
-## 5. Recipes
+## 5. Transmitter & Receiver (wireless)
+
+The **Transmitter** and **Receiver** are a pair that carry a redstone signal wirelessly.
+They can carry a reader's or sensor's accept signal just as well. Both mount on floors,
+walls, and ceilings.
+
+### Basics
+- **They have no owner.** Unlike readers, they carry no lock or binding: anyone may open
+  their config screen and pick them up. The one exception is a receiver whose source is a
+  **reader** — it inherits that reader's lock (see the maintenance-tier table in §1).
+- **Binding happens before placement**: hold an unplaced receiver and right-click whatever
+  it should listen to; it is tuned to that device (white subtitle "Tuned to that device",
+  and the item gains an enchant shimmer). Placing it then completes the link.
+- A receiver may take as its source a **transmitter**, a **card reader**, or an **advanced
+  sensor**. Binding to a reader requires that reader to be in **register mode** — the
+  owner's consent step, the same rule as reader-to-reader linking in §2. Transmitters and
+  sensors have no lock, so they need no such step.
+- While holding a bound device, its target is shown with a **white outline highlight**.
+
+### Transmitter (the sending end)
+A transmitter **relays without interpreting** — all shaping of the signal (duration,
+toggling) is the receiving end's job. It has no physical redstone output of its own.
+
+| Mode | Behavior |
+|---|---|
+| **Redstone only** | Broadcasts the strength (0–15) of the physical redstone wire behind it |
+| **Manual mixed** | The same, but a **standing + empty-hand** right-click also counts as a trigger — either source works |
+
+- The **trigger duration** for manual mixed is adjustable from the config screen (default
+  20 ticks = 1 second, matching a vanilla stone button). The reset button restores it.
+- Vanilla redstone strength (0–15) is preserved end to end, so comparators and the like
+  interoperate normally.
+
+### Receiver (the listening end)
+A receiver turns its source's value into **its own physical redstone output**.
+
+| Mode | Behavior |
+|---|---|
+| **Pulse** | Mirrors the received value in real time, plus an optional **release delay** (how long to hold after it drops to 0; 0 means it turns off immediately) |
+| **Toggle** | Flips its own output only when the value goes **0 → non-zero**. The falling direction is never treated as an edge |
+
+- The **release delay** is set from the config screen (meaningful in pulse mode).
+- An important rule: **duration and delay settings only ever apply to that device's own
+  physical output.** A reader's signal-length setting affects the reader's own redstone and
+  has nothing to do with the value a linked receiver sees — how long the signal lasts is
+  always the receiver's decision.
+
+### Opening the config screen / picking up
+**Standing + wrench or maintenance card** opens the config screen; **sneaking + either**
+picks the device up after a confirming second click. These are lock-free devices, so either
+maintenance card works.
+
+---
+
+## 6. Recipes
+
+### DK Chip
+(empty) – copper ingot – (empty) / gold ingot – redstone – quartz / iron nugget ×3
+
+The shared component in most of the devices below.
 
 ### Card readers (shaped)
-Middle and bottom rows are shared: **redstone – redstone lamp – redstone / iron ingot ×3**
+Middle and bottom rows are shared: **redstone – DK chip – redstone / iron ingot ×3**
 (the Advanced reader uses gold ingots ×3 instead).
 
 | Variant | Top row |
@@ -316,7 +418,11 @@ Middle and bottom rows are shared: **redstone – redstone lamp – redstone / i
 | Advanced | amethyst shard ×3 |
 
 The **Obsidian** reader has its own recipe, independent of the shared pattern above:
-gold ingot – hopper – gold ingot / redstone – redstone lamp – redstone / obsidian ×3.
+gold ingot – hopper – gold ingot / redstone – DK chip – redstone / obsidian ×3.
+
+### Transmitter / Receiver
+- **Transmitter**: (empty) – lightning rod – (empty) / gold ingot – DK chip – gold ingot / (empty) – paper – (empty)
+- **Receiver**: iron ingot – lightning rod – iron ingot / (empty) – DK chip – (empty) / iron ingot – (empty) – iron ingot
 
 ### Keycards
 - **White Blank Card**: dried kelp ×3 / gold nugget – redstone – paper / iron nugget ×3
@@ -332,11 +438,19 @@ paper – gold ingot – paper / gold ingot – that color's blank card – gold
 No recipe (creative-only).
 
 ### Estate Keycard
-obsidian – redstone – obsidian / diamond – any blank card – gold ingot / obsidian – redstone – obsidian
+obsidian – DK chip – obsidian / DK chip – any blank card – DK chip / obsidian – DK chip – obsidian
+
+### Maintenance Cards (golden / estate)
+No recipe from raw materials — put the matching keycard on a crafting table by itself to
+swap it for the maintenance card, and vice versa (1:1, both directions). **The binding is
+preserved across the swap.**
+
+- Golden Keycard ↔ Golden Maintenance Card
+- Estate Keycard ↔ Estate Maintenance Card
 
 ---
 
-## 6. Compatibility notes
+## 7. Compatibility notes
 - Readers and duplicators can't be picked up by sneak-click carrying mods
   (e.g. Carry On).
 - Metal ingredients use common tags (`c:ingots/iron`, etc.), so equivalent materials
@@ -344,13 +458,17 @@ obsidian – redstone – obsidian / diamond – any blank card – gold ingot /
 - With **Jade** installed, looking at a reader shows its owner and whether register
   mode is armed, and looking at a duplicator shows whether a copy is pending
   (optional — no effect when Jade is absent).
+- Opening config screens and picking devices up can also be done with a maintenance card
+  (see §1). The wrench notes below concern Create's **Redstone Link** wireless integration
+  (the frequency slots).
 - With **Create** installed, a reader (or a sensor — see §4) responds to its
   wrench:
   - **Standing + wrench** opens the link screen — two ghost frequency slots (like a
     Redstone Link transmitter) that let the device's accept signal transmit
-    wirelessly over a Redstone Link network. A reader's signal mode picks how: Normal
-    (physical redstone only), Link (wireless only), or **Mixed** (both physical and
-    wireless at once).
+    wirelessly over a Redstone Link network. A reader's signal mode picks how:
+    **Reader-Only Mode** (physical redstone only — shown as **Sensor-Only Mode** on an
+    unbound sensor), **Link-Only Mode** (wireless only), or **Simultaneous Mode** (both
+    physical and wireless at once).
   - The number display in that same screen shows the device's current **signal
     length**. Hold right-click on it for a moment to open an adjustment scale —
     three rows (ticks / seconds / minutes) with milestone marks every 10 units.
@@ -368,7 +486,7 @@ obsidian – redstone – obsidian / diamond – any blank card – gold ingot /
 
 ---
 
-## 7. Recipe viewer (EMI)
+## 8. Recipe viewer (EMI)
 If [EMI](https://modrinth.com/mod/emi) is installed, the card **machines** show up in
 its recipe browser — because registering and duplicating happen through block
 interaction, not a crafting grid, they get their own categories:
@@ -391,15 +509,24 @@ recipes (and back, via recipe-tree lookups on the cards).
 
 ---
 
-## 8. Config & commands
+## 9. Config & commands
 
 **Config** (`config/dynamickeycards-common.toml`):
 - `maxRegistrationsPerReader` (default 128) — per-reader registration cap.
 - `defaultPulseLengthTicks` (default 60 = 3 seconds) — the accept-signal length used by
   a reader that hasn't had its own set. Per-reader signal lengths can be set directly
-  from a reader's link screen (see §6's Create notes).
+  from a reader's link screen (see §7's Create notes).
 
 **Command:**
 - `/dynamickeycards transfer <player>` — while looking at one of your readers, hands
   its ownership to another player. Registrations are kept; only the owner changes.
   Operators (permission level 2) can transfer any reader.
+- `/dynamickeycards release` — clears the owner of the reader you're looking at, leaving
+  it neutral. Registrations are kept. On a neutral reader, arming register mode and
+  managing cards is possible only with the golden cards; passing works as before for
+  anyone holding a registered card. Usable on your own readers, and on any reader as an
+  operator. **Only an operator can undo it** — with no owner set, nobody counts as the
+  owner, so reassigning one with `transfer` needs operator permission.
+- `/dk`, `/dks` — short aliases for `/dynamickeycards`. All three behave identically; both
+  short forms are provided so that a modpack where one is already taken by another mod can
+  still use the other.

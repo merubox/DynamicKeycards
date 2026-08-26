@@ -9,7 +9,7 @@
       "tag": "c:dusts/redstone"
     },
     "L": {
-      "item": "minecraft:redstone_lamp"
+      "item": "dynamickeycards:dk_chip"
     },
     "I": {
       "tag": "c:ingots/gold"

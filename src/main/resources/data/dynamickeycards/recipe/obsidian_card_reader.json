@@ -12,7 +12,7 @@
       "tag": "c:dusts/redstone"
     },
     "L": {
-      "item": "minecraft:redstone_lamp"
+      "item": "dynamickeycards:dk_chip"
     },
     "O": {
       "item": "minecraft:obsidian"

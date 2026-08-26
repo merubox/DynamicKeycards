@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "L": {
+      "item": "minecraft:lightning_rod"
+    },
+    "G": {
+      "tag": "c:ingots/gold"
+    },
+    "K": {
+      "item": "dynamickeycards:dk_chip"
+    },
+    "P": {
+      "item": "minecraft:paper"
+    }
+  },
+  "pattern": [
+    " L ",
+    "GKG",
+    " P "
+  ],
+  "result": {
+    "count": 1,
+    "id": "dynamickeycards:transmitter"
+  },
+  "show_notification": true
+}

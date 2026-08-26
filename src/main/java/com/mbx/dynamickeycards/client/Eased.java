@@ -5,9 +5,8 @@ import net.minecraft.util.Mth;
 /**
  * A value that eases toward whatever it's last targeted over a fixed duration, capturing
  * wherever it currently is and continuing from there rather than restarting from scratch when
- * the target changes again mid-ease - the sensor detection-range highlight uses one of these for
- * its box size and a second, separate one for its line width, which used to be two independent,
- * hand-duplicated copies of this exact capture/lerp logic before being pulled out here.
+ * the target changes again mid-ease - the sensor detection-range highlight uses one for its box
+ * size and a second for its line width.
  */
 public final class Eased<T> {
 

@@ -1,9 +1,11 @@
 package com.mbx.dynamickeycards.block;
 
-import com.mbx.dynamickeycards.compat.create.CreateLinkCompat;
+import com.mbx.dynamickeycards.DKSounds;
 import com.mojang.serialization.MapCodec;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
@@ -29,6 +31,8 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.neoforge.common.Tags;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.UUID;
 
 /**
  * A motion sensor mounted flush against a ceiling (6x6, max thickness 2), never on a floor or
@@ -146,9 +150,10 @@ public class CeilingSensorBlock extends Block implements EntityBlock, MotionSens
     }
 
     /**
-     * Create wrench only, same reasoning and behavior as {@link WallSensorBlock#useItemOn} -
-     * standing opens the config menu, sneaking picks the sensor up after a confirming second
-     * click, no ownership check.
+     * A wrench-tagged item (any mod's - not Create-gated) or either maintenance card, same
+     * reasoning and behavior as {@link WallSensorBlock#useItemOn} - standing opens the config
+     * menu, sneaking picks the sensor up after a confirming second click, gated by
+     * {@link MaintenanceAccess} only while bound to a reader.
      */
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
@@ -163,11 +168,21 @@ public class CeilingSensorBlock extends Block implements EntityBlock, MotionSens
                 return rangeResult;
             }
         }
-        if (stack.isEmpty() || !CreateLinkCompat.isLoaded() || !stack.is(Tags.Items.TOOLS_WRENCH)) {
+        boolean isWrench = stack.is(Tags.Items.TOOLS_WRENCH);
+        if (stack.isEmpty() || !(isWrench || MaintenanceAccess.isMaintenanceCard(stack))) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
         if (!(level.getBlockEntity(pos) instanceof MotionSensorBlockEntity sensor)) {
             return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        }
+        UUID boundReaderId = sensor instanceof AdvancedSensorBlockEntity advanced ? advanced.getBoundReader() : null;
+        if (!MaintenanceAccess.hasReaderLinkedAccess(player, stack, level, boundReaderId)) {
+            if (!level.isClientSide) {
+                player.displayClientMessage(
+                        Component.translatable("dynamickeycards.link_device.maintenance_denied").withStyle(ChatFormatting.RED), true);
+                DKSounds.deny(level, pos);
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
         if (player.isShiftKeyDown()) {
             return wrenchPickup(state, level, pos, player, sensor);
@@ -182,5 +197,11 @@ public class CeilingSensorBlock extends Block implements EntityBlock, MotionSens
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
         return super.useWithoutItem(state, level, pos, player, hit);
+    }
+
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
+        MotionSensorBlockEntity.onRemoved(level, pos, state, newState, moved);
+        super.onRemove(state, level, pos, newState, moved);
     }
 }

@@ -5,6 +5,8 @@ import com.mbx.dynamickeycards.block.AdvancedSensorBlockEntity;
 import com.mbx.dynamickeycards.block.CardDuplicatorBlockEntity;
 import com.mbx.dynamickeycards.block.CardReaderBlockEntity;
 import com.mbx.dynamickeycards.block.MotionSensorBlockEntity;
+import com.mbx.dynamickeycards.block.ReceiverBlockEntity;
+import com.mbx.dynamickeycards.block.TransmitterBlockEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -34,4 +36,12 @@ public class DKBlockEntities {
     public static final Supplier<BlockEntityType<AdvancedSensorBlockEntity>> ADVANCED_SENSOR =
             BLOCK_ENTITIES.register("advanced_sensor", () -> BlockEntityType.Builder.of(AdvancedSensorBlockEntity::new,
                     DKBlocks.ADVANCED_WALL_SENSOR.get(), DKBlocks.ADVANCED_CEILING_SENSOR.get()).build(null));
+
+    public static final Supplier<BlockEntityType<TransmitterBlockEntity>> TRANSMITTER =
+            BLOCK_ENTITIES.register("transmitter", () -> BlockEntityType.Builder.of(TransmitterBlockEntity::new,
+                    DKBlocks.TRANSMITTER.get()).build(null));
+
+    public static final Supplier<BlockEntityType<ReceiverBlockEntity>> RECEIVER =
+            BLOCK_ENTITIES.register("receiver", () -> BlockEntityType.Builder.of(ReceiverBlockEntity::new,
+                    DKBlocks.RECEIVER.get()).build(null));
 }

@@ -1,10 +1,13 @@
 package com.mbx.dynamickeycards;
 
 import com.mbx.dynamickeycards.block.CardReaderBlock;
+import com.mbx.dynamickeycards.block.ClientDeviceCache;
 import com.mbx.dynamickeycards.block.MotionSensorBlock;
+import com.mbx.dynamickeycards.block.TransmitterBlock;
 import com.mbx.dynamickeycards.client.BoxRenderUtil;
 import com.mbx.dynamickeycards.item.BoundSensorBlockItem;
 import com.mbx.dynamickeycards.item.LinkedReaderBlockItem;
+import com.mbx.dynamickeycards.item.ReceiverBlockItem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
@@ -27,9 +30,11 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.UUID;
+
 /**
- * Highlights the reader or sensor a held {@link BoundSensorBlockItem} or
- * {@link LinkedReaderBlockItem} is set to connect with:
+ * Highlights the reader, transmitter, or sensor a held {@link BoundSensorBlockItem},
+ * {@link LinkedReaderBlockItem}, or {@link ReceiverBlockItem} is set to connect with:
  *
  * <ul>
  *   <li>Shown every frame regardless of where the player is looking, for the specific target
@@ -52,10 +57,9 @@ import org.jetbrains.annotations.Nullable;
  *   gradual at first (cubing a value near 1 barely moves it) and rapid at the very end - the
  *   width is still 1/8 of full (a real, visible thin line, not a sliver) at the instant the hard
  *   cutoff removes it, so it reads as "shrinks to a hairline, then snaps away" rather than fading
- *   smoothly to nothing. A plain linear width curve was tried first and looked wrong: linear
- *   spends an *even* amount of time at every width, including the imperceptibly-thin ones near
- *   zero, so it visually "gives up" earlier and less decisively than this cubic-then-hard-cutoff
- *   shape does.</li>
+ *   smoothly to nothing. Cubic rather than linear on purpose: a linear width spends an even
+ *   amount of time at every width, including the imperceptibly thin ones, so it reads as
+ *   giving up earlier and less decisively.</li>
  * </ul>
  */
 @EventBusSubscriber(modid = DynamicKeycards.MOD_ID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
@@ -186,23 +190,33 @@ public class DKClientEvents {
     }
 
     /**
-     * The reader or sensor a held {@link BoundSensorBlockItem} or {@link LinkedReaderBlockItem}
-     * is set to connect with, if any.
+     * The reader, transmitter, or sensor a held {@link BoundSensorBlockItem},
+     * {@link LinkedReaderBlockItem}, or {@link ReceiverBlockItem} is set to connect with, if any.
      */
     @Nullable
     private static BlockPos targetOf(ItemStack stack) {
         if (stack.getItem() instanceof BoundSensorBlockItem) {
-            BlockPos boundReader = BoundSensorBlockItem.boundReader(stack);
-            return boundReader != null ? boundReader : BoundSensorBlockItem.boundSensor(stack);
+            UUID boundReader = BoundSensorBlockItem.boundReader(stack);
+            UUID targetId = boundReader != null ? boundReader : BoundSensorBlockItem.boundSensor(stack);
+            return targetId != null ? ClientDeviceCache.getPosition(targetId) : null;
         }
         if (stack.getItem() instanceof LinkedReaderBlockItem) {
-            return LinkedReaderBlockItem.linkedReader(stack);
+            UUID targetId = LinkedReaderBlockItem.linkedReader(stack);
+            return targetId != null ? ClientDeviceCache.getPosition(targetId) : null;
+        }
+        if (stack.getItem() instanceof ReceiverBlockItem) {
+            UUID targetId = ReceiverBlockItem.boundSource(stack);
+            return targetId != null ? ClientDeviceCache.getPosition(targetId) : null;
         }
         return null;
     }
 
-    /** Whether {@code block} is a valid highlight target: a card reader, or either kind of motion sensor. */
+    /**
+     * Whether {@code block} is a valid highlight target: a card reader, a transmitter, or either
+     * kind of motion sensor - a transmitter only ever matters as a {@link ReceiverBlockItem}'s
+     * bound source, since nothing else in this mod ever binds to one.
+     */
     private static boolean isHighlightable(Block block) {
-        return block instanceof CardReaderBlock || block instanceof MotionSensorBlock;
+        return block instanceof CardReaderBlock || block instanceof MotionSensorBlock || block instanceof TransmitterBlock;
     }
 }

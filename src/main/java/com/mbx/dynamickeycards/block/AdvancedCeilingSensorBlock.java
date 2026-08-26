@@ -67,6 +67,11 @@ public class AdvancedCeilingSensorBlock extends CeilingSensorBlock implements Ad
             if (dyeResult != null) {
                 return dyeResult;
             }
+            // no owner/register-mode gate - an advanced sensor has no such consent concept to begin with
+            ItemInteractionResult bindResult = SignalSource.tryBindReceiverItem(stack, level, pos, player, sensor);
+            if (bindResult != null) {
+                return bindResult;
+            }
         }
         return super.useItemOn(stack, state, level, pos, player, hand, hit);
     }

@@ -1,8 +1,10 @@
 package com.mbx.dynamickeycards;
 
+import com.mbx.dynamickeycards.block.ClientDeviceCache;
 import com.mbx.dynamickeycards.block.MotionSensorBlock;
 import com.mbx.dynamickeycards.block.MotionSensorBlockEntity;
 import com.mbx.dynamickeycards.block.RangeBox;
+import com.mbx.dynamickeycards.network.DeviceSupersededPayload;
 import com.mbx.dynamickeycards.network.SensorRangeAdjustPayload;
 import com.mbx.dynamickeycards.network.SensorRangeCommitPayload;
 import com.mbx.dynamickeycards.registry.DKComponents;
@@ -10,6 +12,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -17,13 +21,17 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.UUID;
+
 /**
- * This mod's only two custom packets - see {@link SensorRangeAdjustPayload}/{@link SensorRangeCommitPayload}
- * for why raw mouse scroll and click input need them when nothing else here does.
+ * This mod's three custom packets - see {@link SensorRangeAdjustPayload}/{@link SensorRangeCommitPayload}
+ * for why raw mouse scroll and click input need them when nothing else here does, and
+ * {@link DeviceSupersededPayload} for the one server-to-client packet among them.
  */
 @EventBusSubscriber(modid = DynamicKeycards.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public class DKNetwork {
@@ -42,6 +50,39 @@ public class DKNetwork {
                 (payload, context) -> context.enqueueWork(() -> handleAdjust(payload, context.player())));
         registrar.playToServer(SensorRangeCommitPayload.TYPE, SensorRangeCommitPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> handleCommit(payload, context.player())));
+        registrar.playToClient(DeviceSupersededPayload.TYPE, DeviceSupersededPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientDeviceCache.register(payload.oldId(), payload.pos())));
+    }
+
+    /**
+     * Broadcasts a {@link DeviceSupersededPayload} to every player who could plausibly hold an
+     * item still referencing {@code oldId} - see that payload's own doc for why this needs to
+     * exist at all. Called once, right alongside each of this mod's four
+     * {@code DeviceIndex#recordSuperseded} call sites (every {@code loadAdditional} that can mint
+     * a fresh id on a detected duplicate) - broadcasting to the whole level rather than only
+     * players with the chunk loaded, since the item holding the stale reference could be anywhere,
+     * not just near {@code pos}.
+     */
+    public static void broadcastSuperseded(ServerLevel level, UUID oldId, BlockPos pos) {
+        PacketDistributor.sendToPlayersInDimension(level, new DeviceSupersededPayload(oldId, pos));
+    }
+
+    /**
+     * Pushes an immediate {@code id -> pos} registration into just this one player's
+     * {@link ClientDeviceCache} - reuses {@link DeviceSupersededPayload}'s wire format for a
+     * non-supersede purpose, since the handler is just an unconditional cache write either way.
+     * Called right after every bind (reader-sensor, reader-reader, reader-receiver, sensor-sensor)
+     * so the bind-target highlight can resolve the freshly-bound target on the very next tick,
+     * instead of depending on that target's own {@code onLoad} having already reached this
+     * specific player - which is usually true well before the bind (the player has to be
+     * standing right at it to interact at all) but isn't guaranteed the instant its chunk first
+     * becomes visible, and a still-loading target was exactly the gap that made the highlight
+     * miss the moment of binding for a device this player hadn't been near yet this session.
+     */
+    public static void registerDevicePosition(Player player, UUID id, BlockPos pos) {
+        if (player instanceof ServerPlayer serverPlayer) {
+            PacketDistributor.sendToPlayer(serverPlayer, new DeviceSupersededPayload(id, pos));
+        }
     }
 
     /**

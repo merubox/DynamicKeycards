@@ -42,6 +42,7 @@ import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.neoforge.common.Tags;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -51,13 +52,14 @@ import java.util.UUID;
 /**
  * Forks a keycard onto blank keycards: source and copy keep every key shared so far,
  * then each side carries a fresh own key, so later registrations never propagate
- * between them. All interaction is sneak-right-click:
+ * between them. No sneaking required for any of it (this device has no owner and no
+ * register-mode-style toggle to reserve the gesture for):
  * insert the keyed source card (green light blinks), then a blank card to complete the
- * copy (solid green). Bare-hand sneaking prompts, or cancels an in-progress copy.
+ * copy (solid green). A bare-hand click prompts, or cancels an in-progress copy.
  * Rejected inputs (golden keycards, blank sources, non-blank targets) flash red for
  * {@link #DENIED_TICKS}; a pending source survives the flash. Emits no redstone.
  */
-public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock implements EntityBlock {
+public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock implements EntityBlock, WrenchPickupBlock {
 
     public static final EnumProperty<DuplicatorMode> MODE = EnumProperty.create("mode", DuplicatorMode.class);
 
@@ -98,8 +100,10 @@ public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock 
     }
 
     /**
-     * Bare hand. Like the card reader's register mode, a pending copy is cancelled by any
-     * bare-hand click, standing or sneaking; otherwise sneaking shows the source prompt.
+     * Bare hand, no sneaking required for either case (this device has no register-mode-style
+     * toggle gesture to reserve sneaking for, unlike the card reader - see {@code CardReaderBlock}'s
+     * class doc for that principle). A pending copy is cancelled by any bare-hand click; otherwise
+     * it shows the source prompt.
      */
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
@@ -115,9 +119,6 @@ public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock 
             }
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
-        if (!player.isShiftKeyDown()) {
-            return InteractionResult.PASS;
-        }
         if (!level.isClientSide) {
             message(player, "source_prompt", ChatFormatting.WHITE);
         }
@@ -130,7 +131,20 @@ public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock 
         if (stack.isEmpty()) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
-        if (player.isSpectator() || !player.isShiftKeyDown() || !(stack.getItem() instanceof KeycardItem)
+        // A wrench or either maintenance card, sneaking: picks the duplicator up after a
+        // confirming second click. No owner concept here (never has been) - unlike the reader,
+        // anyone can pick this up, same as the sensors/transmitter/receiver. Standing does
+        // nothing - there's no config UI to open, this block has no settings.
+        if (stack.is(Tags.Items.TOOLS_WRENCH) || MaintenanceAccess.isMaintenanceCard(stack)) {
+            if (!(level.getBlockEntity(pos) instanceof CardDuplicatorBlockEntity duplicator)) {
+                return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+            }
+            if (!player.isShiftKeyDown()) {
+                return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+            }
+            return wrenchPickup(state, level, pos, player, duplicator);
+        }
+        if (player.isSpectator() || !(stack.getItem() instanceof KeycardItem)
                 || !(level.getBlockEntity(pos) instanceof CardDuplicatorBlockEntity duplicator)) {
             return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
         }

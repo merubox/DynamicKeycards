@@ -1,5 +1,12 @@
 # Third-Party Notices
 
+## Assets
+
+All textures, models, and other files under this mod's own
+`src/main/resources/assets/` are original work. No asset file from any other mod
+is redistributed here, in whole or in part. What follows concerns adapted code
+only.
+
 ## Create (https://github.com/Creators-of-Create/Create)
 
 The pulse length adjustment overlay's interaction logic (the row/value coordinate
@@ -12,10 +19,8 @@ Create's source code. The sensor detection-range highlight's continuous UV tilin
 (setting a face's texture coordinates to its width/height in blocks rather than a
 normalized 0..1 range, so the pattern repeats via the texture's own tiling instead
 of stretching, and follows a resize smoothly instead of snapping once it settles)
-was adapted from the same technique in Create's `AABBOutline` renderer. Create's
-code (everything outside its own `src/main/resources/assets/` directory) is
-distributed under the MIT License reproduced below; no assets, textures, or other
-files from `assets/` were used.
+was adapted from the same technique in Create's `AABBOutline` renderer. The code
+adapted above is distributed under the MIT License reproduced below.
 
 ```
 MIT License
@@ -50,8 +55,8 @@ right/left-clicking the highlight itself rather than the original block, and
 rendering it at a fixed thin width when not being looked at versus a thicker width
 with a face texture when it is (two fixed states, not a fade between them) - was
 adapted from the "Honey Glue" item's client-side handler in Create: Simulated
-(bundled with Create: Aeronautics). Its code (outside its own asset directories,
-which were not used here) is distributed under the MIT License reproduced below.
+(bundled with Create: Aeronautics). The code adapted above is distributed under
+the MIT License reproduced below.
 
 ```
 MIT License

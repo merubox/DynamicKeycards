@@ -5,7 +5,9 @@ import com.mbx.dynamickeycards.item.BlankKeycardItem;
 import com.mbx.dynamickeycards.item.CrewManagerKeycardItem;
 import com.mbx.dynamickeycards.item.CrewMemberKeycardItem;
 import com.mbx.dynamickeycards.item.EstateKeycardItem;
+import com.mbx.dynamickeycards.item.EstateMaintenanceCardItem;
 import com.mbx.dynamickeycards.item.GoldenKeycardItem;
+import com.mbx.dynamickeycards.item.GoldenMaintenanceCardItem;
 import com.mbx.dynamickeycards.item.KeycardItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -40,10 +42,24 @@ public class DKItems {
 
     public static final DeferredItem<Item> GOLDEN_KEYCARD;
     public static final DeferredItem<Item> ESTATE_KEYCARD;
+    public static final DeferredItem<Item> GOLDEN_MAINTENANCE_CARD;
+    public static final DeferredItem<Item> ESTATE_MAINTENANCE_CARD;
+    /** Plain crafting material for future device recipes - no behavior of its own yet; recipes to follow in a later update. */
+    public static final DeferredItem<Item> DK_CHIP;
 
     static {
         // Everything is shown in the creative tab; the keyed/member results are also obtainable
         // in survival through registration/duplication.
+        // Golden/estate (both keycard and maintenance-card forms) lead the card section - the
+        // master keys are what a player reaches for first, ahead of the 64 per-color cards.
+        GOLDEN_KEYCARD = register("golden_keycard",
+                () -> new GoldenKeycardItem(new Item.Properties().stacksTo(1)));
+        GOLDEN_MAINTENANCE_CARD = register("golden_maintenance_card",
+                () -> new GoldenMaintenanceCardItem(new Item.Properties().stacksTo(1)));
+        ESTATE_KEYCARD = register("estate_keycard",
+                () -> new EstateKeycardItem(new Item.Properties().stacksTo(1)));
+        ESTATE_MAINTENANCE_CARD = register("estate_maintenance_card",
+                () -> new EstateMaintenanceCardItem(new Item.Properties().stacksTo(1)));
         for (String color : COLORS) {
             BLANK_CARDS.add(register(color + "_blank_card", () -> new BlankKeycardItem(new Item.Properties())));
         }
@@ -56,10 +72,9 @@ public class DKItems {
         for (String color : COLORS) {
             MEMBER_CARDS.add(register(color + "_member_access_card", () -> new CrewMemberKeycardItem(new Item.Properties())));
         }
-        GOLDEN_KEYCARD = register("golden_keycard",
-                () -> new GoldenKeycardItem(new Item.Properties().stacksTo(1)));
-        ESTATE_KEYCARD = register("estate_keycard",
-                () -> new EstateKeycardItem(new Item.Properties().stacksTo(1)));
+        // Not added to TAB_ITEMS (see registerNoTab) - shown right after the receiver block
+        // instead, see DKCreativeTabs.
+        DK_CHIP = registerNoTab("dk_chip", () -> new Item(new Item.Properties()));
     }
 
     /** Index of this card's color in {@link #COLORS}, or 0 if unrecognized. */
@@ -92,5 +107,10 @@ public class DKItems {
         DeferredItem<Item> holder = ITEMS.register(name, item);
         TAB_ITEMS.add(holder);
         return holder;
+    }
+
+    /** Registers the item without adding it to {@link #TAB_ITEMS} - for an item whose creative-tab position is set explicitly elsewhere. */
+    private static DeferredItem<Item> registerNoTab(String name, Supplier<Item> item) {
+        return ITEMS.register(name, item);
     }
 }

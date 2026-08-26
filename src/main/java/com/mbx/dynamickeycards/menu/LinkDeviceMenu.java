@@ -1,7 +1,10 @@
 package com.mbx.dynamickeycards.menu;
 
+import com.mbx.dynamickeycards.block.AdvancedSensorBlockEntity;
+import com.mbx.dynamickeycards.block.BoundReaderMode;
 import com.mbx.dynamickeycards.block.LinkDeviceBlockEntity;
 import com.mbx.dynamickeycards.block.SignalMode;
+import com.mbx.dynamickeycards.compat.create.CreateAvailability;
 import com.mbx.dynamickeycards.registry.DKMenuTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -18,8 +21,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 /**
- * Wrench-opened config UI shared by every {@link LinkDeviceBlockEntity} (the card reader, and
- * both motion sensors): two ghost frequency slots (indices 0 and 1), used as a Redstone Link
+ * Wrench-opened config UI shared by every {@link LinkDeviceBlockEntity}: two ghost frequency slots (indices 0 and 1), used as a Redstone Link
  * network key, plus the mode toggle / reset / signal-length controls. Slots 2-37 are the
  * player's own inventory (3x9 + hotbar), same layout vanilla containers use.
  *
@@ -29,10 +31,23 @@ public class LinkDeviceMenu extends AbstractContainerMenu {
 
     public static final int GHOST_SLOT_COUNT = 2;
 
+    /**
+     * The two ghost frequency slots only mean anything as a Create Redstone Link key - see
+     * {@code CreateAvailability}'s own doc for why {@code isLoaded()} is checked once here (server
+     * and client both construct this menu independently from their own {@code fromNetwork}/direct
+     * paths, so each side computes this itself rather than one side telling the other). {@code 0}
+     * when Create isn't installed: the constructor then skips adding the two ghost {@link Slot}s
+     * at all, so there's nothing in {@code menu.slots} for the screen to render or the player to
+     * click on - not just locked, genuinely absent - and the player-inventory slots added right
+     * after simply start two indices earlier instead, with no other change needed anywhere else in
+     * this class.
+     */
+    private final int uiGhostSlotCount;
+
     /** {@link #clickMenuButton} ids, sent from the screen's mode/reset buttons. */
     public static final int BUTTON_NORMAL_MODE = 0;
     public static final int BUTTON_LINK_MODE = 1;
-    public static final int BUTTON_MIXED_MODE = 2;
+    public static final int BUTTON_SIMULTANEOUS_MODE = 2;
     public static final int BUTTON_RESET = 3;
     /**
      * Signal length values (in ticks) are sent as {@code SIGNAL_LENGTH_ID_BASE + ticks} —
@@ -48,10 +63,13 @@ public class LinkDeviceMenu extends AbstractContainerMenu {
         super(DKMenuTypes.LINK_DEVICE.get(), containerId);
         this.device = device;
 
-        Container ghostContainer = new GhostFrequencyContainer(device);
-        // matches the frequency #1 (red) / #2 (blue) slots in the screen's background art
-        this.addSlot(ghostSlot(ghostContainer, 0, 80, 25));
-        this.addSlot(ghostSlot(ghostContainer, 1, 80, 43));
+        this.uiGhostSlotCount = CreateAvailability.isLoaded() ? GHOST_SLOT_COUNT : 0;
+        if (uiGhostSlotCount > 0) {
+            Container ghostContainer = new GhostFrequencyContainer(device);
+            // matches the frequency #1 (red) / #2 (blue) slots in the screen's background art
+            this.addSlot(ghostSlot(ghostContainer, 0, 80, 25));
+            this.addSlot(ghostSlot(ghostContainer, 1, 80, 43));
+        }
 
         // matches LinkDeviceScreen's player-inventory panel: panel sits flush at local
         // x=0 with the main panel, slots are +8/+18 into it from there
@@ -101,9 +119,23 @@ public class LinkDeviceMenu extends AbstractContainerMenu {
             }
             return true;
         }
+        // a sensor bound to a reader repurposes the three mode buttons to its own BoundReaderMode
+        // set instead of SignalMode - see AdvancedSensorBlockEntity's own doc for why
+        if (device instanceof AdvancedSensorBlockEntity sensor && sensor.getBoundReader() != null) {
+            switch (id) {
+                case BUTTON_NORMAL_MODE -> sensor.setBoundReaderMode(BoundReaderMode.SENSOR_CENTRIC_SIMULTANEOUS);
+                case BUTTON_LINK_MODE -> sensor.setBoundReaderMode(BoundReaderMode.READER_ONLY);
+                case BUTTON_SIMULTANEOUS_MODE -> sensor.setBoundReaderMode(BoundReaderMode.SIMULTANEOUS);
+                case BUTTON_RESET -> device.clearSignalLength();
+                default -> {
+                    return false;
+                }
+            }
+            return true;
+        }
         switch (id) {
-            // a bound advanced sensor already has its actual mode/frequency owned by the reader
-            // it's bound to - these three are locked out while that's the case, see
+            // a sensor bound to *another sensor* already has its actual mode/frequency owned by
+            // that sensor - these three are locked out while that's the case, see
             // LinkDeviceBlockEntity#isLinkModeEditable
             case BUTTON_NORMAL_MODE -> {
                 if (device.isLinkModeEditable()) {
@@ -115,13 +147,13 @@ public class LinkDeviceMenu extends AbstractContainerMenu {
                     device.setSignalMode(SignalMode.LINK);
                 }
             }
-            case BUTTON_MIXED_MODE -> {
+            case BUTTON_SIMULTANEOUS_MODE -> {
                 if (device.isLinkModeEditable()) {
-                    device.setSignalMode(SignalMode.MIXED);
+                    device.setSignalMode(SignalMode.SIMULTANEOUS);
                 }
             }
             case BUTTON_RESET -> {
-                if (device.isLinkModeEditable()) {
+                if (device.isFrequencyEditable()) {
                     device.setFrequencySlot(0, ItemStack.EMPTY);
                     device.setFrequencySlot(1, ItemStack.EMPTY);
                 }
@@ -164,11 +196,11 @@ public class LinkDeviceMenu extends AbstractContainerMenu {
      */
     @Override
     public void clicked(int slotId, int dragType, ClickType clickType, Player player) {
-        if (slotId < 0 || slotId >= GHOST_SLOT_COUNT) {
+        if (slotId < 0 || slotId >= uiGhostSlotCount) {
             super.clicked(slotId, dragType, clickType, player);
             return;
         }
-        if (clickType == ClickType.THROW || !device.isLinkModeEditable()) {
+        if (clickType == ClickType.THROW || !device.isFrequencyEditable()) {
             return;
         }
         ItemStack carried = getCarried();
@@ -178,13 +210,13 @@ public class LinkDeviceMenu extends AbstractContainerMenu {
 
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
-        if (index < GHOST_SLOT_COUNT) {
+        if (index < uiGhostSlotCount) {
             // nothing is ever actually held in a ghost slot, so there's nothing to move out
             return ItemStack.EMPTY;
         }
         ItemStack clicked = this.getSlot(index).getItem();
-        if (!clicked.isEmpty() && device.isLinkModeEditable()) {
-            for (int i = 0; i < GHOST_SLOT_COUNT; i++) {
+        if (!clicked.isEmpty() && uiGhostSlotCount > 0 && device.isFrequencyEditable()) {
+            for (int i = 0; i < uiGhostSlotCount; i++) {
                 if (device.getFrequencySlot(i).isEmpty()) {
                     device.setFrequencySlot(i, clicked.copyWithCount(1));
                     this.getSlot(i).setChanged();

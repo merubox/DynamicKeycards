@@ -2,6 +2,8 @@ package com.mbx.dynamickeycards.emi;
 
 import com.mbx.dynamickeycards.DynamicKeycards;
 import com.mbx.dynamickeycards.menu.LinkDeviceScreen;
+import com.mbx.dynamickeycards.menu.ReceiverScreen;
+import com.mbx.dynamickeycards.menu.TransmitterScreen;
 import com.mbx.dynamickeycards.registry.DKBlocks;
 import com.mbx.dynamickeycards.registry.DKItems;
 import dev.emi.emi.api.EmiEntrypoint;
@@ -44,6 +46,24 @@ public class DKEmiPlugin implements EmiPlugin {
         // icon (which sits outside the screen's own background rectangle, next to the arrow)
         // - and, while the pulse length popup is open, over that full-screen overlay too
         registry.addExclusionArea(LinkDeviceScreen.class, (screen, consumer) -> {
+            int[] bounds = screen.getDeviceIconScreenBounds();
+            consumer.accept(new Bounds(bounds[0], bounds[1], bounds[2], bounds[3]));
+
+            int[] popupBounds = screen.getPulseLengthPopupScreenBounds();
+            if (popupBounds != null) {
+                consumer.accept(new Bounds(popupBounds[0], popupBounds[1], popupBounds[2], popupBounds[3]));
+            }
+        });
+        registry.addExclusionArea(ReceiverScreen.class, (screen, consumer) -> {
+            int[] bounds = screen.getDeviceIconScreenBounds();
+            consumer.accept(new Bounds(bounds[0], bounds[1], bounds[2], bounds[3]));
+
+            int[] popupBounds = screen.getPulseLengthPopupScreenBounds();
+            if (popupBounds != null) {
+                consumer.accept(new Bounds(popupBounds[0], popupBounds[1], popupBounds[2], popupBounds[3]));
+            }
+        });
+        registry.addExclusionArea(TransmitterScreen.class, (screen, consumer) -> {
             int[] bounds = screen.getDeviceIconScreenBounds();
             consumer.accept(new Bounds(bounds[0], bounds[1], bounds[2], bounds[3]));
 

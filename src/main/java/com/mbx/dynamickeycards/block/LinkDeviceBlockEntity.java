@@ -21,21 +21,35 @@ import net.minecraft.world.level.block.state.BlockState;
  * matching concrete methods, so they're satisfied for free and only listed so the menu/screen
  * can call them through this interface without needing the concrete type.
  */
-public interface LinkDeviceBlockEntity {
+public interface LinkDeviceBlockEntity extends WrenchPickupTarget {
 
     SignalMode getSignalMode();
 
     void setSignalMode(SignalMode mode);
 
     /**
-     * Whether {@link #setSignalMode} and the frequency slots can currently be changed. Always
-     * true except for a bound advanced sensor, where the reader it's bound to already owns the
-     * actual signal mode/frequency - only the signal length (its own hold delay) stays
-     * independently adjustable there. {@code LinkDeviceMenu}/{@code LinkDeviceScreen} check this
-     * to lock out and grey those controls without needing to know why.
+     * Whether the three mode buttons do anything right now. Always true except for a sensor bound
+     * to *another sensor*, where the sensor it's bound to already owns the actual signal
+     * mode - only the signal length (its own hold delay) stays independently adjustable there.
+     * A sensor bound to a *reader* is a special case that still returns true here (see
+     * {@code AdvancedSensorBlockEntity}'s own override): the three buttons stay clickable, just
+     * repurposed to its own {@code BoundReaderMode} set instead of {@link SignalMode} - see
+     * {@link #isFrequencyEditable} for why that's a separate question from this one.
      */
     default boolean isLinkModeEditable() {
         return true;
+    }
+
+    /**
+     * Whether the frequency ghost slots specifically can currently be edited - separate from
+     * {@link #isLinkModeEditable} because a sensor bound to a reader keeps its mode buttons live
+     * (repurposed, see {@link #isLinkModeEditable}'s own doc) while the frequency slots stay
+     * locked regardless: Create Link involvement is off entirely in every bound state, reader or
+     * sensor, so there's never a meaningful frequency to set. Defaults to mirroring
+     * {@link #isLinkModeEditable} - the two only diverge for that one case.
+     */
+    default boolean isFrequencyEditable() {
+        return isLinkModeEditable();
     }
 
     ItemStack getFrequencySlot(int index);
@@ -47,20 +61,6 @@ public interface LinkDeviceBlockEntity {
     void setSignalLength(int ticks);
 
     void clearSignalLength();
-
-    /** Whether a sneak-wrench pickup ({@code WrenchConfigurableBlock}) is awaiting its confirming click. */
-    boolean isWrenchPickupPending();
-
-    /** Arms the sneak-wrench pickup confirmation. */
-    void armWrenchPickupPending();
-
-    /**
-     * Cancels any armed destructive-action confirmation on this device (wrench pickup, and
-     * anything else an implementor adds - the reader also uses this for its own reset
-     * confirmation). Called whenever the player does something else instead of following
-     * through, on the theory that a confirmation should only ever fire right after its warning.
-     */
-    void clearPendingActions();
 
     /**
      * Strength (0 or 15) this device currently wants to transmit over Create's Redstone Link -

@@ -43,7 +43,12 @@ public class KeycardItem extends Item {
         if (own == null) {
             return List.of();
         }
-        List<UUID> keys = new ArrayList<>(inheritedKeys(stack));
+        List<UUID> inherited = inheritedKeys(stack);
+        if (inherited.isEmpty()) {
+            // the common case (never forked) - skip the ArrayList allocation below entirely
+            return List.of(own);
+        }
+        List<UUID> keys = new ArrayList<>(inherited);
         keys.add(own);
         return keys;
     }

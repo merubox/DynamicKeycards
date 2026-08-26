@@ -1,6 +1,5 @@
 package com.mbx.dynamickeycards.block;
 
-import com.mbx.dynamickeycards.compat.create.CreateLinkCompat;
 import com.mbx.dynamickeycards.registry.DKBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -9,6 +8,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -19,6 +19,8 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.UUID;
 
 /**
  * State for a motion sensor ({@link WallSensorBlock}/{@link CeilingSensorBlock}): the per-tick
@@ -36,10 +38,19 @@ import org.jetbrains.annotations.Nullable;
  */
 public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBlockEntity {
 
-    /** Same shape as {@code CardReaderBlockEntity}'s equivalent - see there for why. */
-    private static final int PENDING_CONFIRM_TICKS = 60;
+    /** Same shape as {@link CardReaderBlockEntity#externalHoldUntilGameTime}. */
 
-    private long wrenchPickupPendingStartTime = -1;
+    /**
+     * Stable identity in {@link DeviceIndex} - every sensor gets one (not just
+     * {@link AdvancedSensorBlockEntity}), even though a plain sensor is never itself a
+     * {@link SignalSource} and can no longer be bound to at all going forward (see
+     * {@code MotionSensorBlock#tryBindItemInteraction}'s own doc) - kept for a plain sensor
+     * that's still the target of a binding made before that rule existed, so it keeps resolving
+     * exactly as it always did.
+     */
+    private UUID deviceId = UUID.randomUUID();
+
+    private final WrenchPickupState wrenchPickup = new WrenchPickupState();
     /** Game time an entity was last detected; {@code -1} if none has been detected yet. */
     private long lastDetectedGameTime = -1;
     /**
@@ -54,12 +65,9 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
      */
     private long externalHoldUntilGameTime = -1;
 
-    private final ItemStack[] frequencySlots = {ItemStack.EMPTY, ItemStack.EMPTY};
-    private SignalMode signalMode = SignalMode.NORMAL;
+    private final LinkDeviceState linkState = new LinkDeviceState(this);
     /** Release delay in ticks after the last detected entity leaves; 0 cuts the signal instantly. */
     private int signalLength = 10;
-    @Nullable
-    private Object createLinkAdapter;
 
     /**
      * The confirmed detection zone, or {@code null} if this sensor's range has never been
@@ -76,9 +84,10 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
      * (see {@code MotionSensorBlock#tryRangeEditInteraction}), confirmed by doing that again
      * (consuming one redstone dust and replacing {@link #zone} with {@link #editZone}), or
      * cancelled by any bare-hand click, same as {@code CardReaderBlockEntity}'s register mode.
-     * Deliberately not persisted - like that mode's own pending-confirmation timers, a stale
-     * "still editing" flag surviving a reload would just be confusing, never unsafe, so it's
-     * simplest to let it always come back {@code false} after one.
+     * Persisted alongside {@link #editZone} (see {@link #saveAdditional}) so a mid-edit sensor
+     * keeps its in-progress box armed across a reload instead of silently losing it - the client
+     * would otherwise have no way to learn an edit was in progress at all, since {@link #getUpdateTag}
+     * reuses the same save data.
      */
     private boolean rangeEditMode;
     /**
@@ -109,22 +118,32 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
 
     static void tick(Level level, BlockPos pos, BlockState state, MotionSensorBlockEntity be) {
         long now = level.getGameTime();
-        boolean shouldSignal = computeShouldSignal(level, pos, state, be, now) || be.isExternallyHeld(now);
+        boolean shouldSignal = computeShouldSignal(level, pos, state, be, now).withLinger() || be.isExternallyHeld(now);
         applyPresent(level, pos, state, be, shouldSignal);
     }
 
     /**
-     * This sensor's own zone-detection-driven signal state: detected right now, or still within
-     * its own release-delay window after the last detection - excludes any external hold (see
-     * {@link #isExternallyHeld}), which is a separate, independent reason to signal. Package-visible
-     * so a bound advanced sensor driving another sensor ({@code AdvancedSensorBlockEntity}) can
-     * compute the exact same thing for itself, both for its own local output and for what to
-     * relay to its target - the target ends up mirroring the driving sensor's own on/off pattern,
-     * release delay included, rather than just a raw "detected right now" blip.
+     * {@code raw}: detected this exact tick, nothing more - what a {@link SignalSource}-capable
+     * sensor publishes to the wireless system (see {@code AdvancedSensorBlockEntity}), since a
+     * device's own local release delay is only ever supposed to shape its own physical output,
+     * never what gets broadcast (see {@link SignalSource#getSignalSourceStrength}'s own doc).
+     * {@code withLinger}: {@code raw}, or still within the release-delay window after the last
+     * detection - this sensor's own actual signal state, excluding any external hold (see
+     * {@link #isExternallyHeld}), which is a separate, independent reason to signal.
      */
-    static boolean computeShouldSignal(Level level, BlockPos pos, BlockState state, MotionSensorBlockEntity be, long now) {
+    record DetectionResult(boolean raw, boolean withLinger) {
+    }
+
+    /**
+     * Package-visible so a bound advanced sensor driving another sensor
+     * ({@code AdvancedSensorBlockEntity}) can compute the exact same thing for itself, both for
+     * its own local output (using {@link DetectionResult#withLinger}) and for what to relay to
+     * its target - the target ends up mirroring the driving sensor's own on/off pattern, release
+     * delay included, rather than just a raw "detected right now" blip.
+     */
+    static DetectionResult computeShouldSignal(Level level, BlockPos pos, BlockState state, MotionSensorBlockEntity be, long now) {
         if (!(state.getBlock() instanceof MotionSensorBlock)) {
-            return false;
+            return new DetectionResult(false, false);
         }
         boolean detected = !level.getEntitiesOfClass(LivingEntity.class, be.detectionZone(pos),
                 MotionSensorBlockEntity::countsAsPresent).isEmpty();
@@ -133,8 +152,9 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
         }
         // 0t: no lingering, drops the instant nothing's detected. >0t: keeps signalling until
         // that many ticks have passed since the last detection, resetting if something re-enters.
-        return detected || (be.signalLength > 0 && be.lastDetectedGameTime >= 0
+        boolean withLinger = detected || (be.signalLength > 0 && be.lastDetectedGameTime >= 0
                 && now - be.lastDetectedGameTime < be.signalLength);
+        return new DetectionResult(detected, withLinger);
     }
 
     /**
@@ -244,18 +264,13 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
 
     @Override
     public SignalMode getSignalMode() {
-        return signalMode;
+        return linkState.getSignalMode();
     }
 
     /** Set by the wrench UI's normal/link/mixed mode buttons. */
     @Override
     public void setSignalMode(SignalMode signalMode) {
-        this.signalMode = signalMode;
-        if (signalMode.linkActive) {
-            registerLink();
-        } else {
-            unregisterLink();
-        }
+        linkState.setSignalMode(signalMode);
         this.syncToClient();
     }
 
@@ -266,13 +281,12 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
 
     @Override
     public ItemStack getFrequencySlot(int index) {
-        return frequencySlots[index];
+        return linkState.getFrequencySlot(index);
     }
 
     @Override
     public void setFrequencySlot(int index, ItemStack stack) {
-        frequencySlots[index] = stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1);
-        reregisterLink();
+        linkState.setFrequencySlot(index, stack);
         this.syncToClient();
     }
 
@@ -296,49 +310,22 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
 
     @Override
     public boolean isWrenchPickupPending() {
-        return wrenchPickupPendingStartTime >= 0 && level != null
-                && level.getGameTime() - wrenchPickupPendingStartTime < PENDING_CONFIRM_TICKS;
+        return wrenchPickup.isPending(level);
     }
 
     @Override
     public void armWrenchPickupPending() {
-        wrenchPickupPendingStartTime = level != null ? level.getGameTime() : -1;
+        wrenchPickup.arm(level);
     }
 
     @Override
     public void clearPendingActions() {
-        wrenchPickupPendingStartTime = -1;
-    }
-
-    /** Re-announces this sensor to Create's Redstone Link network under its current frequency. */
-    private void reregisterLink() {
-        if (createLinkAdapter != null && level != null) {
-            CreateLinkCompat.unregister(level, createLinkAdapter);
-            CreateLinkCompat.register(level, createLinkAdapter);
-        }
-    }
-
-    private void registerLink() {
-        if (level == null || level.isClientSide || !CreateLinkCompat.isLoaded()) {
-            return;
-        }
-        if (createLinkAdapter == null) {
-            createLinkAdapter = CreateLinkCompat.createAdapter(this);
-        }
-        CreateLinkCompat.register(level, createLinkAdapter);
-    }
-
-    private void unregisterLink() {
-        if (createLinkAdapter != null && level != null) {
-            CreateLinkCompat.unregister(level, createLinkAdapter);
-        }
+        wrenchPickup.clear();
     }
 
     /** A no-op unless Create is installed and this sensor is currently registered. */
     private void notifyLinkChanged() {
-        if (createLinkAdapter != null && level != null) {
-            CreateLinkCompat.notifyChanged(level, createLinkAdapter);
-        }
+        linkState.notifyLinkChanged();
     }
 
     protected void syncToClient() {
@@ -348,43 +335,55 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
         }
     }
 
+    public UUID getDeviceId() {
+        return deviceId;
+    }
+
     @Override
     public void onLoad() {
         super.onLoad();
-        if (signalMode.linkActive) {
-            registerLink();
-        }
+        linkState.onLoad();
+        DeviceRegistry.registerOnLoad(this, deviceId);
     }
 
     @Override
     public void setRemoved() {
         super.setRemoved();
-        unregisterLink();
-        createLinkAdapter = null;
+        linkState.setRemoved();
+    }
+
+    /**
+     * Shared {@code onRemove} body for {@link WallSensorBlock}/{@link CeilingSensorBlock} (and,
+     * inherited, both advanced variants) - unregisters this sensor's {@link #deviceId} from
+     * {@link DeviceIndex} once it's actually destroyed (not just moved).
+     */
+    static void onRemoved(Level level, BlockPos pos, BlockState state, BlockState newState, boolean moved) {
+        if (moved || state.is(newState.getBlock())) {
+            return;
+        }
+        if (!(level.getBlockEntity(pos) instanceof MotionSensorBlockEntity sensor)) {
+            return;
+        }
+        if (level.isClientSide) {
+            ClientDeviceCache.unregister(sensor.deviceId);
+        } else if (level instanceof ServerLevel serverLevel) {
+            DeviceIndex.get(serverLevel).unregister(sensor.deviceId);
+        }
     }
 
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        tag.putString("SignalMode", signalMode.name());
+        DeviceRegistry.save(tag, deviceId);
+        linkState.save(tag, registries);
         tag.putInt("SignalLength", signalLength);
-        if (!frequencySlots[0].isEmpty()) {
-            tag.put("FrequencySlot0", frequencySlots[0].save(registries));
-        }
-        if (!frequencySlots[1].isEmpty()) {
-            tag.put("FrequencySlot1", frequencySlots[1].save(registries));
-        }
         if (zone != null) {
             tag.put("Zone", writeRangeBox(zone));
         }
-        // rangeEditMode/editZone deliberately go through the exact same tag as the persisted
-        // save data (not a separate sync-only path) - getUpdateTag below is just this same
-        // saveAdditional, so anything left out of it would never reach the client either, and
-        // the in-progress box would silently never render (a real bug an earlier version of this
-        // had: the box was tracked server-side but the client had no way to learn about it).
-        // Piggybacking on the save file this way is harmless - CardReaderBlockEntity's own
-        // register mode is persisted the same way - so a mid-edit sensor just keeps its
-        // in-progress box armed across a reload instead of silently losing it.
+        // Goes through this same tag rather than a separate sync-only path because getUpdateTag
+        // below just calls this same saveAdditional - anything left out of it would never reach
+        // the client either, and the box would silently never render (a real bug an earlier
+        // version of this had: tracked server-side with no way for the client to learn about it).
         if (rangeEditMode) {
             tag.putBoolean("RangeEditMode", true);
             if (editZone != null) {
@@ -396,15 +395,22 @@ public class MotionSensorBlockEntity extends BlockEntity implements LinkDeviceBl
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        signalMode = tag.contains("SignalMode") ? SignalMode.byName(tag.getString("SignalMode")) : SignalMode.NORMAL;
+        deviceId = DeviceRegistry.load(tag);
+        linkState.load(tag, registries);
         signalLength = tag.contains("SignalLength") ? tag.getInt("SignalLength") : 10;
-        frequencySlots[0] = tag.contains("FrequencySlot0")
-                ? ItemStack.parseOptional(registries, tag.getCompound("FrequencySlot0")) : ItemStack.EMPTY;
-        frequencySlots[1] = tag.contains("FrequencySlot1")
-                ? ItemStack.parseOptional(registries, tag.getCompound("FrequencySlot1")) : ItemStack.EMPTY;
         zone = tag.contains("Zone") ? readRangeBox(tag.getCompound("Zone")) : null;
         rangeEditMode = tag.getBoolean("RangeEditMode");
         editZone = tag.contains("EditZone") ? readRangeBox(tag.getCompound("EditZone")) : null;
+        // only ever non-null here (as opposed to during a plain disk-chunk load, where the level
+        // isn't attached until after this returns) when NBT is being pasted onto an already-placed
+        // block - a Create schematic print, most notably. Re-registers unconditionally (not just on
+        // a confirmed collision) since onLoad may already have run earlier in that same sequence,
+        // before this deviceId was known, registering a since-discarded temporary one instead.
+        if (level instanceof ServerLevel serverLevel) {
+            // a plain sensor references nothing of its own, so a fresh id is the whole fix
+            deviceId = DeviceRegistry.registerResolvingDuplicate(
+                    this, serverLevel, DeviceIndex.get(serverLevel), deviceId, null);
+        }
     }
 
     private static CompoundTag writeRangeBox(RangeBox box) {

@@ -1,0 +1,101 @@
+{
+  "parent": "block/block",
+  "render_type": "cutout",
+  "ambientocclusion": false,
+  "textures": {
+    "face": "dynamickeycards:block/receiver/receiver_face_off",
+    "side": "dynamickeycards:block/receiver/receiver_side",
+    "particle": "dynamickeycards:block/receiver/receiver_face_off"
+  },
+  "elements": [
+    {
+      "from": [
+        5,
+        5,
+        7
+      ],
+      "to": [
+        11,
+        11,
+        9
+      ],
+      "faces": {
+        "north": {
+          "texture": "#face",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#side",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "east": {
+          "texture": "#side",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "rotation": 90
+        },
+        "west": {
+          "texture": "#side",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "rotation": 90
+        },
+        "up": {
+          "texture": "#side",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "down": {
+          "texture": "#side",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [
+        30,
+        225,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "type": "dynamickeycards:maintenance_card_swap",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "dynamickeycards:estate_maintenance_card"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "dynamickeycards:estate_keycard"
+  },
+  "show_notification": true
+}

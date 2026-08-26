@@ -23,14 +23,31 @@ import java.util.UUID;
  * the keys the source and the copy will share. Synced to clients so both sides resolve
  * interactions the same way.
  */
-public class CardDuplicatorBlockEntity extends BlockEntity {
+public class CardDuplicatorBlockEntity extends BlockEntity implements WrenchPickupTarget {
+
 
     @Nullable
     private List<UUID> sourceKeys;
     private boolean sourceIsManager;
+    private final WrenchPickupState wrenchPickup = new WrenchPickupState();
 
     public CardDuplicatorBlockEntity(BlockPos pos, BlockState state) {
         super(DKBlockEntities.CARD_DUPLICATOR.get(), pos, state);
+    }
+
+    @Override
+    public boolean isWrenchPickupPending() {
+        return wrenchPickup.isPending(level);
+    }
+
+    @Override
+    public void armWrenchPickupPending() {
+        wrenchPickup.arm(level);
+    }
+
+    @Override
+    public void clearPendingActions() {
+        wrenchPickup.clear();
     }
 
     @Nullable

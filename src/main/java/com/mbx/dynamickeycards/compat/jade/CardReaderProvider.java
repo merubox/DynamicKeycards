@@ -27,12 +27,16 @@ public enum CardReaderProvider implements IBlockComponentProvider, IServerDataPr
     private static final ResourceLocation UID =
             ResourceLocation.fromNamespaceAndPath(DynamicKeycards.MOD_ID, "card_reader");
     private static final String OWNER_NAME_KEY = "DKOwnerName";
+    /** Set instead of {@link #OWNER_NAME_KEY} for a reader with no owner at all - see {@code /dynamickeycards release}. */
+    private static final String NEUTRAL_KEY = "DKNeutral";
 
     @Override
     public void appendServerData(CompoundTag data, BlockAccessor accessor) {
         if (accessor.getBlockEntity() instanceof CardReaderBlockEntity reader) {
             UUID owner = reader.getOwner();
-            if (owner != null) {
+            if (owner == null) {
+                data.putBoolean(NEUTRAL_KEY, true);
+            } else {
                 MinecraftServer server = accessor.getLevel().getServer();
                 GameProfileCache cache = server != null ? server.getProfileCache() : null;
                 String name = cache != null
@@ -48,7 +52,9 @@ public enum CardReaderProvider implements IBlockComponentProvider, IServerDataPr
         if (!(accessor.getBlockEntity() instanceof CardReaderBlockEntity reader)) {
             return;
         }
-        if (accessor.getServerData().contains(OWNER_NAME_KEY)) {
+        if (accessor.getServerData().getBoolean(NEUTRAL_KEY)) {
+            tooltip.add(Component.translatable("dynamickeycards.jade.owner_neutral"));
+        } else if (accessor.getServerData().contains(OWNER_NAME_KEY)) {
             String name = accessor.getServerData().getString(OWNER_NAME_KEY);
             Component owner = name.isEmpty()
                     ? Component.translatable("dynamickeycards.jade.unknown")

@@ -8,16 +8,16 @@
     "O": {
       "item": "minecraft:observer"
     },
-    "R": {
-      "tag": "c:dusts/redstone"
+    "K": {
+      "item": "dynamickeycards:dk_chip"
     },
     "G": {
       "item": "minecraft:black_stained_glass"
     }
   },
   "pattern": [
-    "III",
-    "ROR",
+    " K ",
+    "IOI",
     "GGG"
   ],
   "result": {

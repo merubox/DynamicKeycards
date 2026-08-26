@@ -2,27 +2,26 @@ package com.mbx.dynamickeycards.menu;
 
 import com.mbx.dynamickeycards.DKTooltips;
 import com.mbx.dynamickeycards.DynamicKeycards;
+import com.mbx.dynamickeycards.block.AdvancedSensorBlockEntity;
+import com.mbx.dynamickeycards.block.BoundReaderMode;
+import com.mbx.dynamickeycards.block.CardReaderBlockEntity;
+import com.mbx.dynamickeycards.block.LinkDeviceBlockEntity;
 import com.mbx.dynamickeycards.block.SignalMode;
-import com.mojang.blaze3d.platform.Window;
+import com.mbx.dynamickeycards.compat.create.CreateAvailability;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Wrench-opened config screen shared by every {@code LinkDeviceBlockEntity} (the card reader,
- * and both motion sensors): background + two ghost frequency slots from {@link LinkDeviceMenu},
+ * Wrench-opened config screen shared by every {@code LinkDeviceBlockEntity}: background + two
+ * ghost frequency slots from {@link LinkDeviceMenu},
  * plus five buttons (normal mode / link mode / mixed mode / reset / confirm) drawn from
  * {@code broadcast_widgets.png} (button-box states) and {@code broadcast_icons.png} (icon
  * glyphs).
@@ -59,10 +58,21 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
             ResourceLocation.fromNamespaceAndPath(DynamicKeycards.MOD_ID, "textures/gui/broadcast_widgets.png");
     private static final ResourceLocation ICONS =
             ResourceLocation.fromNamespaceAndPath(DynamicKeycards.MOD_ID, "textures/gui/broadcast_icons.png");
+    /**
+     * The two frequency ghost slots (red/blue, stacked, 18x18 each) plus the 1px gray frame
+     * wrapping the pair (20x38 total) - drawn separately from {@link #BACKGROUND} rather than
+     * baked into it, unlike the old art. {@link #BACKGROUND} is shared with
+     * {@code TransmitterScreen}/{@code ReceiverScreen}, neither of which has any slots at all, so
+     * keeping this out of the shared background avoids drawing dead pixels there. Always visible
+     * regardless of whether a slot is occupied - see the two ghost slots' own position in
+     * {@code LinkDeviceMenu} ((80,25)/(80,43)) for where these line up: a vanilla slot's
+     * background occupies one pixel above/left of its own coordinate, and the frame sits one
+     * more pixel out from that on every side.
+     */
+    private static final ResourceLocation SLOTS =
+            ResourceLocation.fromNamespaceAndPath(DynamicKeycards.MOD_ID, "textures/gui/broadcast_slots.png");
     private static final ResourceLocation PLAYER_INVENTORY =
             ResourceLocation.fromNamespaceAndPath(DynamicKeycards.MOD_ID, "textures/gui/broadcast_player_inventory.png");
-    private static final ResourceLocation PULSE_TEX =
-            ResourceLocation.fromNamespaceAndPath(DynamicKeycards.MOD_ID, "textures/gui/pulse_length.png");
 
     private static final int BG_WIDTH = 184;
     private static final int BG_HEIGHT = 99;
@@ -75,71 +85,21 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
     private static final int PULSE_BOX_W = 36;
     private static final int PULSE_BOX_H = 18;
     private static final int PULSE_HOLD_OPEN_TICKS = 5;
-    private static final int PULSE_MAX_VALUE = 60;
-    private static final int PULSE_MILESTONE_INTERVAL = 10;
-    private static final int PULSE_BAR_SCALE = 2;
-    private static final int PULSE_MILESTONE_SIZE = 4;
-    private static final int PULSE_ROW_HEIGHT = 11;
-    private static final int[] PULSE_ROW_MULTIPLIER = {1, 20, 1200};
-    private static final String[] PULSE_ROW_KEYS = {"ticks", "seconds", "minutes"};
     /**
      * Not one of our own sounds - looked up by id at runtime, so this only ever plays when
      * Create happens to be installed (the lookup is simply absent otherwise). No Create class
      * is referenced anywhere for this, so it carries none of the usual optional-dependency risk.
      */
-    private static final ResourceLocation SCROLL_SOUND_ID =
-            ResourceLocation.fromNamespaceAndPath("create", "scroll_value");
-
-    /** A (u, v, width, height) region of {@link #PULSE_TEX} (256x256). */
-    private record Tex(int u, int v, int w, int h) {
-    }
-
-    private static final Tex TEX_MILESTONE = new Tex(0, 0, 7, 8);
-    private static final Tex TEX_BAR = new Tex(7, 0, 249, 8);
-    private static final Tex TEX_BAR_BG = new Tex(75, 9, 1, 1);
-    private static final Tex TEX_OUTER_BG = new Tex(80, 9, 1, 1);
-    private static final Tex TEX_CURSOR_LEFT = new Tex(0, 9, 3, 14);
-    private static final Tex TEX_CURSOR = new Tex(4, 9, 56, 14);
-    private static final Tex TEX_CURSOR_RIGHT = new Tex(61, 9, 3, 14);
-    private static final Tex TEX_LABEL_BG = new Tex(0, 31, 161, 11);
-    private static final Tex TEX_FRAME_TL = new Tex(65, 9, 4, 4);
-    private static final Tex TEX_FRAME_TR = new Tex(70, 9, 4, 4);
-    private static final Tex TEX_FRAME_BL = new Tex(65, 19, 4, 4);
-    private static final Tex TEX_FRAME_BR = new Tex(70, 19, 4, 4);
-    private static final Tex TEX_FRAME_LEFT = new Tex(65, 14, 3, 4);
-    private static final Tex TEX_FRAME_RIGHT = new Tex(71, 14, 3, 4);
-    private static final Tex TEX_FRAME_TOP = new Tex(0, 24, 256, 3);
-    private static final Tex TEX_FRAME_BOTTOM = new Tex(0, 27, 256, 3);
-    private static final Tex TEX_LABEL_BG_SELECTED = new Tex(0, 64, 161, 11);
-    private static final Tex TEX_BAR_SELECTED = new Tex(0, 76, 249, 8);
-    private static final Tex TEX_MILESTONE_SELECTED = new Tex(0, 86, 7, 8);
 
     private ModeButton normalModeButton;
     private ModeButton linkModeButton;
-    private ModeButton mixedModeButton;
+    private ModeButton simultaneousModeButton;
 
     private int pulseBoxHeldTicks = -1;
-    private boolean pulseLengthPopupOpen;
-    private int pulseLabelWidth;
-    private int pulseValueBarWidth;
-    private int pulsePopupX;
-    private int pulsePopupY;
-    private int pulseBoxX;
-    private int pulseBoxY;
-    private int pulseBoxW;
-    private int pulseBoxH;
-    private int pulseRowsY;
-    private int pulseRowsHeight;
-    private int pulseMilestoneCount;
-    private int pulseHintY;
-    private int pulseHoverRow;
-    private int pulseHoverValue;
-    /**
-     * At most one scroll sound per game tick - mouseMoved can fire many times within a single
-     * tick during a fast sweep, and without this the sound would stack/overlap and fall out of
-     * sync with the value actually landed on instead of playing once, cleanly, per tick.
-     */
-    private int pulseSoundCooldown;
+    private final DurationPopup durationPopup = new DurationPopup(this,
+            () -> menu.getDevice().getSignalLength(),
+            ticks -> sendButtonClick(LinkDeviceMenu.SIGNAL_LENGTH_ID_BASE + ticks),
+            () -> Component.translatable("dynamickeycards.link_device.signal_length"));
 
     public LinkDeviceScreen(LinkDeviceMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -156,17 +116,14 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
         this.leftPos += 4;
         this.topPos += 5;
 
-        normalModeButton = addRenderableWidget(new ModeButton(leftPos + 7, topPos + BUTTON_Y, ModeButton.ICON_NORMAL,
+        normalModeButton = addRenderableWidget(new ModeButton(leftPos + 7, topPos + BUTTON_Y, ModeButton.ICON_REDSTONE,
                 "normal_mode", () -> sendButtonClick(LinkDeviceMenu.BUTTON_NORMAL_MODE)));
 
         linkModeButton = addRenderableWidget(new ModeButton(leftPos + 25, topPos + BUTTON_Y, ModeButton.ICON_LINK,
                 "link_mode", () -> sendButtonClick(LinkDeviceMenu.BUTTON_LINK_MODE)));
-        // the antenna glyph itself sits 1px left of where it should within its icon cell -
-        // button box and hitbox are untouched, only the icon draw position moves
-        linkModeButton.iconOffsetX = 1;
 
-        mixedModeButton = addRenderableWidget(new ModeButton(leftPos + 43, topPos + BUTTON_Y, ModeButton.ICON_MIXED,
-                "mixed_mode", () -> sendButtonClick(LinkDeviceMenu.BUTTON_MIXED_MODE)));
+        simultaneousModeButton = addRenderableWidget(new ModeButton(leftPos + 43, topPos + BUTTON_Y, ModeButton.ICON_SIMULTANEOUS,
+                "simultaneous_mode", () -> sendButtonClick(LinkDeviceMenu.BUTTON_SIMULTANEOUS_MODE)));
 
         // no tooltip on these two - icon-obvious enough, so titleKey is unused (null)
         addRenderableWidget(new ModeButton(leftPos + 122, topPos + BUTTON_Y, ModeButton.ICON_RESET,
@@ -187,28 +144,63 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
         super.containerTick();
         updateModeIndicators();
         tickPulseBoxHold();
-        if (pulseSoundCooldown > 0) {
-            pulseSoundCooldown--;
-        }
+        durationPopup.tick();
     }
 
+    /**
+     * Also picks each button's {@code titleKey} for the current device/binding state - a sensor
+     * bound to a reader repurposes the three buttons to its own {@code BoundReaderMode} instead
+     * of {@link SignalMode} (still freely clickable there, unlike a sensor bound to *another
+     * sensor*, which stays locked to whatever that sensor owns - see
+     * {@code LinkDeviceBlockEntity#isLinkModeEditable}'s own doc), and a plain reader vs. an
+     * unbound sensor use different wording for the same underlying {@link SignalMode#NORMAL}.
+     */
     private void updateModeIndicators() {
-        SignalMode mode = menu.getDevice().getSignalMode();
+        LinkDeviceBlockEntity device = menu.getDevice();
+        if (device instanceof AdvancedSensorBlockEntity sensor && sensor.getBoundReader() != null) {
+            BoundReaderMode mode = sensor.getBoundReaderMode();
+            normalModeButton.titleKey = "bound_sensor_centric_mode";
+            linkModeButton.titleKey = "bound_reader_only_mode";
+            simultaneousModeButton.titleKey = "bound_simultaneous_mode";
+            normalModeButton.green = mode == BoundReaderMode.SENSOR_CENTRIC_SIMULTANEOUS;
+            linkModeButton.green = mode == BoundReaderMode.READER_ONLY;
+            simultaneousModeButton.green = mode == BoundReaderMode.SIMULTANEOUS;
+            normalModeButton.active = true;
+            linkModeButton.active = true;
+            simultaneousModeButton.active = true;
+            return;
+        }
+
+        normalModeButton.titleKey = device instanceof CardReaderBlockEntity ? "reader_only_mode" : "sensor_only_mode";
+        linkModeButton.titleKey = "link_only_mode";
+        simultaneousModeButton.titleKey = "simultaneous_mode";
+
+        SignalMode mode = device.getSignalMode();
         normalModeButton.green = mode == SignalMode.NORMAL;
         linkModeButton.green = mode == SignalMode.LINK;
-        mixedModeButton.green = mode == SignalMode.MIXED;
+        simultaneousModeButton.green = mode == SignalMode.SIMULTANEOUS;
 
-        // a bound advanced sensor already has its actual mode/frequency owned by the reader
-        // it's bound to - lock these out (dimmed, clicks ignored) rather than let them lie
-        boolean editable = menu.getDevice().isLinkModeEditable();
+        // a sensor bound to *another sensor* already has its actual mode/frequency owned by that
+        // sensor - lock these out (dimmed, clicks ignored) rather than let them lie
+        boolean editable = device.isLinkModeEditable();
+        // LINK/SIMULTANEOUS both route redstone over Create's Redstone Link (see SignalMode#linkActive) -
+        // locking them out the same "dimmed, clicks ignored" way whenever Create isn't installed,
+        // rather than leaving them clickable into a mode that can never actually take effect
+        boolean createAvailable = CreateAvailability.isLoaded();
         normalModeButton.active = editable;
-        linkModeButton.active = editable;
-        mixedModeButton.active = editable;
+        linkModeButton.active = editable && createAvailable;
+        simultaneousModeButton.active = editable && createAvailable;
     }
 
-    /** Same dimmed-lock treatment as the mode buttons, for the two ghost frequency slots. */
+    /**
+     * Same dimmed-lock treatment as the mode buttons, for the two ghost frequency slots - only
+     * while Create is installed and they're merely locked (a bound advanced sensor doesn't own its
+     * own frequency). With Create absent there's no slot graphic underneath to dim in the first
+     * place - see {@link #renderBg} - so this stays out of the way entirely rather than drawing a
+     * translucent rectangle over nothing.
+     */
     private void renderLockedFrequencySlots(GuiGraphics graphics) {
-        if (menu.getDevice().isLinkModeEditable()) {
+        if (!CreateAvailability.isLoaded() || menu.getDevice().isFrequencyEditable()) {
             return;
         }
         graphics.fill(leftPos + 79, topPos + 24, leftPos + 97, topPos + 42, 0x90000000);
@@ -216,11 +208,11 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
     }
 
     private void tickPulseBoxHold() {
-        if (pulseLengthPopupOpen || pulseBoxHeldTicks < 0) {
+        if (durationPopup.isOpen() || pulseBoxHeldTicks < 0) {
             return;
         }
         if (pulseBoxHeldTicks++ >= PULSE_HOLD_OPEN_TICKS) {
-            openPulseLengthPopup();
+            durationPopup.open();
             pulseBoxHeldTicks = -1;
         }
     }
@@ -233,6 +225,12 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         graphics.blit(BACKGROUND, leftPos, topPos, 0, 0, BG_WIDTH, BG_HEIGHT, BG_WIDTH, BG_HEIGHT);
+        // the two ghost frequency slots are a Create Redstone Link key and mean nothing without
+        // it - LinkDeviceMenu doesn't even add them as real Slots in that case (see its own doc),
+        // so there's nothing here to click on either way; just skip drawing the frame around them
+        if (CreateAvailability.isLoaded()) {
+            graphics.blit(SLOTS, leftPos + 78, topPos + 23, 0, 0, 20, 38, 20, 38);
+        }
 
         // centered in the header bar using (width-8)/2 - textWidth/2, not a plain midpoint,
         // to account for the arrow decoration
@@ -275,6 +273,17 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
     private static final int ICON_SIZE = 64;
 
     /**
+     * Base Z for {@link #renderDeviceIcon}. {@code GuiGraphics#renderItem} adds 150 of its own Z,
+     * and the uniform 4x scale below multiplies that to 600 - so this offset is what lands the
+     * finished icon at Z 200: above the background panel (Z 0), but below the Z 400 plane vanilla
+     * draws tooltips on. Left at the old Z 100 the icon ended up at Z 700 and painted itself over
+     * every tooltip that reached it. The scale has to stay uniform (the block model is rotated in
+     * its GUI transform, so scaling Z differently from X/Y would shear it) - which is exactly why
+     * this is corrected here on the base offset instead.
+     */
+    private static final int ICON_Z = -400;
+
+    /**
      * A scaled-up icon of whichever device block this screen belongs to, rendered next to the
      * arrow (every reader variant and both motion sensors share this one screen, so the icon
      * has to follow the instance).
@@ -284,7 +293,7 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
         int x = getIconAreaX();
         int y = getIconAreaY();
         graphics.pose().pushPose();
-        graphics.pose().translate(x, y, 100);
+        graphics.pose().translate(x, y, ICON_Z);
         graphics.pose().scale(4, 4, 4);
         graphics.renderItem(stack, 0, 0);
         graphics.pose().popPose();
@@ -316,7 +325,7 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
      * official way to suppress just the tooltip while leaving the rest of EMI's panel alone.
      */
     public int[] getPulseLengthPopupScreenBounds() {
-        return pulseLengthPopupOpen ? new int[] {0, 0, this.width, this.height} : null;
+        return durationPopup.isOpen() ? new int[] {0, 0, this.width, this.height} : null;
     }
 
     /**
@@ -328,7 +337,7 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
      */
     @Override
     protected void renderTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
-        if (pulseLengthPopupOpen) {
+        if (durationPopup.isOpen()) {
             return;
         }
         super.renderTooltip(graphics, mouseX, mouseY);
@@ -341,12 +350,10 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
         renderTooltip(graphics, mouseX, mouseY);
         renderButtonTooltip(graphics, normalModeButton, mouseX, mouseY);
         renderButtonTooltip(graphics, linkModeButton, mouseX, mouseY);
-        renderButtonTooltip(graphics, mixedModeButton, mouseX, mouseY);
+        renderButtonTooltip(graphics, simultaneousModeButton, mouseX, mouseY);
         renderEmptySlotTooltip(graphics, mouseX, mouseY);
         renderPulseBoxTooltip(graphics, mouseX, mouseY);
-        if (pulseLengthPopupOpen) {
-            renderPulseLengthPopup(graphics);
-        }
+        durationPopup.render(graphics);
     }
 
     /**
@@ -356,7 +363,7 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
      * after a click, which was leaving the tooltip stuck on screen after pressing a button.
      */
     private void renderButtonTooltip(GuiGraphics graphics, ModeButton button, int mouseX, int mouseY) {
-        if (pulseLengthPopupOpen || !button.isMouseOver(mouseX, mouseY)) {
+        if (durationPopup.isOpen() || !button.isMouseOver(mouseX, mouseY)) {
             return;
         }
         List<Component> tooltip = new ArrayList<>();
@@ -369,9 +376,14 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
      * An empty frequency slot shows its own name (Frequency #1/#2) as a hover tooltip - but not
      * while the slots are locked (see {@link #renderLockedFrequencySlots}): a bound advanced
      * sensor doesn't own its frequency anymore, so naming a slot you can't edit is just noise.
+     * Also skipped entirely without Create: {@code menu.getSlot(0)}/{@code (1)} then refer to the
+     * player's own first two inventory slots instead (see {@code LinkDeviceMenu}'s own doc on why
+     * the ghost slots simply aren't added there) - labeling those "Frequency #1/#2" would be a
+     * real bug, not just noise.
      */
     private void renderEmptySlotTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
-        if (pulseLengthPopupOpen || hoveredSlot == null || hoveredSlot.hasItem() || !menu.getDevice().isLinkModeEditable()) {
+        if (durationPopup.isOpen() || hoveredSlot == null || hoveredSlot.hasItem()
+                || !CreateAvailability.isLoaded() || !menu.getDevice().isFrequencyEditable()) {
             return;
         }
         String key;
@@ -387,7 +399,7 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
 
     /** Title + "hold to edit" hint, same two-line shape as {@link #renderButtonTooltip}. */
     private void renderPulseBoxTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
-        if (pulseLengthPopupOpen || !isOverPulseBox(mouseX, mouseY)) {
+        if (durationPopup.isOpen() || !isOverPulseBox(mouseX, mouseY)) {
             return;
         }
         List<Component> tooltip = new ArrayList<>();
@@ -398,247 +410,16 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
         graphics.renderComponentTooltip(font, tooltip, mouseX, mouseY);
     }
 
-    // ---- Pulse length adjustment overlay ----
-
-    private void openPulseLengthPopup() {
-        pulseLengthPopupOpen = true;
-        pulseSoundCooldown = 0;
-
-        int ticks = menu.getDevice().getSignalLength();
-        int row = 0;
-        int value = ticks;
-        if (ticks > 60 * 20) {
-            row = 2;
-            value = ticks / (60 * 20);
-        } else if (ticks > 60) {
-            row = 1;
-            value = ticks / 20;
-        }
-        pulseHoverRow = row;
-        pulseHoverValue = Mth.clamp(value, 0, PULSE_MAX_VALUE);
-
-        pulseLabelWidth = 0;
-        for (String key : PULSE_ROW_KEYS) {
-            pulseLabelWidth = Math.max(pulseLabelWidth, font.width(pulseRowLabel(key)));
-        }
-        pulseMilestoneCount = PULSE_MAX_VALUE / PULSE_MILESTONE_INTERVAL + 1;
-        pulseValueBarWidth = (PULSE_MAX_VALUE + 1) * PULSE_BAR_SCALE + 1 + pulseMilestoneCount * PULSE_MILESTONE_SIZE;
-        pulseRowsHeight = PULSE_ROW_KEYS.length * PULSE_ROW_HEIGHT;
-
-        pulseBoxW = pulseLabelWidth + 14 + pulseValueBarWidth + 10;
-        // 17px above rowsY (title) + 16px below (hint) - same proportions as the reference
-        // layout, instead of the title crowding the box's own top edge
-        pulseBoxH = 17 + pulseRowsHeight + 16;
-        pulseBoxX = (this.width - pulseBoxW) / 2;
-        pulseBoxY = (this.height - pulseBoxH) / 2;
-        pulsePopupX = pulseBoxX + 6;
-
-        pulseRowsY = pulseBoxY + 17;
-        pulseHintY = pulseRowsY + pulseRowsHeight + 6;
-
-        warpCursorToPulseValue(pulseHoverRow, pulseHoverValue);
-    }
-
-    private Component pulseRowLabel(String key) {
-        return Component.translatable("dynamickeycards.link_device.signal_length." + key);
-    }
-
-    private static String formatPulseValue(int row, int value) {
-        return switch (row) {
-            case 0 -> value + "t";
-            case 1 -> "0:" + (value < 10 ? "0" : "") + value;
-            default -> value + ":00";
-        };
-    }
-
-    /** X coordinate (absolute screen space) of a given column along the currently open bar. */
-    private double pulseCoordX(int column) {
-        int milestonesPassed = (Math.max(1, column) - 1) / PULSE_MILESTONE_INTERVAL;
-        double xOut = milestonesPassed * PULSE_MILESTONE_SIZE + column * PULSE_BAR_SCALE + 1.5;
-        if (column % PULSE_MILESTONE_INTERVAL == 0) {
-            xOut += PULSE_MILESTONE_SIZE / 2.0;
-        }
-        if (column > 0) {
-            xOut += PULSE_MILESTONE_SIZE;
-        }
-        return pulsePopupX + pulseLabelWidth + 14 + 4 + xOut;
-    }
-
-    private double pulseCoordY(int row) {
-        return pulseRowsY + (row + 0.5) * PULSE_ROW_HEIGHT - 0.5;
-    }
-
-    private void warpCursorToPulseValue(int row, int value) {
-        double x = pulseCoordX(value);
-        double y = pulseCoordY(row);
-        Window window = minecraft.getWindow();
-        double guiScale = window.getGuiScale();
-        GLFW.glfwSetCursorPos(window.getWindow(), x * guiScale, y * guiScale);
-    }
-
-    /** Finds the row closest to mouseY, then the column (in that row) closest to mouseX. */
-    private void updatePulseHoverFromMouse(double mouseX, double mouseY) {
-        boolean milestonesOnly = hasShiftDown();
-
-        int row = 0;
-        double bestDiff = Double.MAX_VALUE;
-        for (; row < PULSE_ROW_KEYS.length; row++) {
-            double diff = Math.abs(pulseCoordY(row) - mouseY);
-            if (bestDiff < diff) {
-                break;
-            }
-            bestDiff = diff;
-        }
-        row = Mth.clamp(row - 1, 0, PULSE_ROW_KEYS.length - 1);
-
-        int column = 0;
-        bestDiff = Double.MAX_VALUE;
-        for (; column <= PULSE_MAX_VALUE; column++) {
-            int probe = milestonesOnly ? column * PULSE_MILESTONE_INTERVAL : column;
-            if (probe > PULSE_MAX_VALUE) {
-                break;
-            }
-            double diff = Math.abs(pulseCoordX(probe) - mouseX);
-            if (bestDiff < diff) {
-                break;
-            }
-            bestDiff = diff;
-        }
-        column -= 1;
-        int value = milestonesOnly ? column * PULSE_MILESTONE_INTERVAL : column;
-        value = Mth.clamp(value, 0, PULSE_MAX_VALUE);
-        if (row != pulseHoverRow || value != pulseHoverValue) {
-            pulseHoverRow = row;
-            pulseHoverValue = value;
-            playPulseScrollSound();
-        }
-    }
-
+    /** The signal-length readout in the button row - held with right-click to open {@link #durationPopup}. */
     private boolean isOverPulseBox(double mouseX, double mouseY) {
         int x = leftPos + PULSE_BOX_X;
         int y = topPos + BUTTON_Y;
         return mouseX >= x && mouseX < x + PULSE_BOX_W && mouseY >= y && mouseY < y + PULSE_BOX_H;
     }
 
-    /** No-op (silent) unless Create happens to be installed - see {@link #SCROLL_SOUND_ID}. */
-    private void playPulseScrollSound() {
-        if (pulseSoundCooldown > 0) {
-            return;
-        }
-        BuiltInRegistries.SOUND_EVENT.getOptional(SCROLL_SOUND_ID).ifPresent(sound -> {
-            float pitch = Mth.lerp(pulseHoverValue / (float) PULSE_MAX_VALUE, 1.15f, 1.5f);
-            minecraft.getSoundManager().play(SimpleSoundInstance.forUI(sound, pitch, 0.25f));
-            pulseSoundCooldown = 1;
-        });
-    }
-
-    private void confirmAndClosePulseLengthPopup() {
-        int multiplier = PULSE_ROW_MULTIPLIER[pulseHoverRow];
-        // 0 is a legitimate choice (shown as "0t") - not floored up to 1
-        int ticks = Mth.clamp(pulseHoverValue * multiplier, 0, 72000);
-        sendButtonClick(LinkDeviceMenu.SIGNAL_LENGTH_ID_BASE + ticks);
-        pulseLengthPopupOpen = false;
-    }
-
-    /**
-     * Drawn on a raised Z plane so it sits above the player-inventory item icons underneath -
-     * those render at their own elevated Z (see {@link #renderDeviceIcon}), and a flat overlay
-     * left at Z 0 would otherwise get drawn over by them.
-     */
-    private void renderPulseLengthPopup(GuiGraphics graphics) {
-        graphics.pose().pushPose();
-        graphics.pose().translate(0, 0, 400);
-        renderPulseLengthPopupContent(graphics);
-        graphics.pose().popPose();
-    }
-
-    private void renderPulseLengthPopupContent(GuiGraphics graphics) {
-        graphics.fill(0, 0, this.width, this.height, 0x90000000);
-        blitStretched(graphics, pulseBoxX, pulseBoxY, pulseBoxW, pulseBoxH, TEX_OUTER_BG);
-
-        Component title = Component.translatable("dynamickeycards.link_device.signal_length");
-        graphics.drawCenteredString(font, title, pulseBoxX + pulseBoxW / 2, pulseRowsY - 14, 0xFFFFFF);
-
-        int barFrameX = pulsePopupX + pulseLabelWidth + 14;
-        renderFrame(graphics, barFrameX, pulseRowsY - 3, pulseValueBarWidth + 8, pulseRowsHeight + 5);
-        blitStretched(graphics, barFrameX + 3, pulseRowsY, pulseValueBarWidth + 2, pulseRowsHeight - 1, TEX_BAR_BG);
-
-        for (int row = 0; row < PULSE_ROW_KEYS.length; row++) {
-            int rowY = pulseRowsY + row * PULSE_ROW_HEIGHT;
-            boolean selected = row == pulseHoverRow;
-
-            blitCropped(graphics, pulsePopupX - 4, rowY, pulseLabelWidth + 8, 11,
-                    selected ? TEX_LABEL_BG_SELECTED : TEX_LABEL_BG);
-
-            Tex barTex = selected ? TEX_BAR_SELECTED : TEX_BAR;
-            int valueBarX = pulsePopupX + pulseLabelWidth + 14 + 4;
-            for (int w = 0; w < pulseValueBarWidth; w += barTex.w() - 1) {
-                int segW = Math.min(barTex.w() - 1, pulseValueBarWidth - w);
-                blitCropped(graphics, valueBarX + w, rowY + 1, segW, 8, barTex);
-            }
-
-            graphics.drawString(font, pulseRowLabel(PULSE_ROW_KEYS[row]),
-                    selected ? pulsePopupX + 3 : pulsePopupX, rowY + 1,
-                    selected ? 0xF0F0F4 : 0x7A7A80, false);
-
-            Tex milestoneTex = selected ? TEX_MILESTONE_SELECTED : TEX_MILESTONE;
-            int milestoneX = valueBarX;
-            for (int m = 0; m < pulseMilestoneCount; m++) {
-                blitNative(graphics, milestoneX, rowY + 1, milestoneTex);
-                milestoneX += PULSE_MILESTONE_SIZE + PULSE_MILESTONE_INTERVAL * PULSE_BAR_SCALE;
-            }
-        }
-
-        renderFrame(graphics, pulsePopupX - 7, pulseRowsY - 3, pulseLabelWidth + 14, pulseRowsHeight + 5);
-
-        String cursorText = formatPulseValue(pulseHoverRow, pulseHoverValue);
-        int cursorWidth = (font.width(cursorText) / 2) * 2 + 3;
-        int cursorX = (int) pulseCoordX(pulseHoverValue) - cursorWidth / 2;
-        int cursorY = (int) pulseCoordY(pulseHoverRow) - 7;
-        blitNative(graphics, cursorX - 3, cursorY, TEX_CURSOR_LEFT);
-        blitCropped(graphics, cursorX, cursorY, cursorWidth, 14, TEX_CURSOR);
-        blitNative(graphics, cursorX + cursorWidth, cursorY, TEX_CURSOR_RIGHT);
-        graphics.drawString(font, cursorText, cursorX + 2, cursorY + 3, 0xF0F0F4, false);
-
-        Component hint = Component.translatable("dynamickeycards.link_device.signal_length.hint",
-                Component.keybind("key.use"));
-        graphics.drawCenteredString(font, hint, pulseBoxX + pulseBoxW / 2, pulseHintY, 0xFFFFFF);
-    }
-
-    /** Four fixed corners + stretched/cropped edges - a standard 9-slice border. */
-    private void renderFrame(GuiGraphics graphics, int x, int y, int w, int h) {
-        blitNative(graphics, x, y, TEX_FRAME_TL);
-        blitNative(graphics, x + w - 4, y, TEX_FRAME_TR);
-        blitNative(graphics, x, y + h - 4, TEX_FRAME_BL);
-        blitNative(graphics, x + w - 4, y + h - 4, TEX_FRAME_BR);
-        if (h > 8) {
-            blitStretched(graphics, x, y + 4, 3, h - 8, TEX_FRAME_LEFT);
-            blitStretched(graphics, x + w - 3, y + 4, 3, h - 8, TEX_FRAME_RIGHT);
-        }
-        if (w > 8) {
-            blitCropped(graphics, x + 4, y, w - 8, 3, TEX_FRAME_TOP);
-            blitCropped(graphics, x + 4, y + h - 3, w - 8, 3, TEX_FRAME_BOTTOM);
-        }
-    }
-
-    /** Draws {@code tex} at its native size (1:1, no scaling). */
-    private void blitNative(GuiGraphics graphics, int x, int y, Tex tex) {
-        blitCropped(graphics, x, y, tex.w(), tex.h(), tex);
-    }
-
-    /** Crops a {@code w}x{@code h} chunk starting at the region's (u, v), drawn at 1:1 scale. */
-    private void blitCropped(GuiGraphics graphics, int x, int y, int w, int h, Tex tex) {
-        graphics.blit(PULSE_TEX, x, y, tex.u(), tex.v(), w, h, 256, 256);
-    }
-
-    /** Stretches the region's full (w, h) texture area to fill an arbitrary destination size. */
-    private void blitStretched(GuiGraphics graphics, int x, int y, int w, int h, Tex tex) {
-        graphics.blit(PULSE_TEX, x, y, w, h, tex.u(), tex.v(), tex.w(), tex.h(), 256, 256);
-    }
-
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (pulseLengthPopupOpen) {
+        if (durationPopup.mouseClicked()) {
             return true;
         }
         if (button == 1 && isOverPulseBox(mouseX, mouseY)) {
@@ -650,10 +431,7 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (pulseLengthPopupOpen) {
-            if (button == 1) {
-                confirmAndClosePulseLengthPopup();
-            }
+        if (durationPopup.mouseReleased(button)) {
             return true;
         }
         if (button == 1) {
@@ -664,8 +442,7 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
 
     @Override
     public void mouseMoved(double mouseX, double mouseY) {
-        if (pulseLengthPopupOpen) {
-            updatePulseHoverFromMouse(mouseX, mouseY);
+        if (durationPopup.mouseMoved(mouseX, mouseY)) {
             return;
         }
         super.mouseMoved(mouseX, mouseY);
@@ -673,89 +450,10 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (pulseLengthPopupOpen) {
-            int step = hasShiftDown() ? PULSE_MILESTONE_INTERVAL : 1;
-            int delta = (int) Math.signum(scrollY) * step;
-            int newValue = Mth.clamp(pulseHoverValue + delta, 0, PULSE_MAX_VALUE);
-            if (newValue != pulseHoverValue) {
-                pulseHoverValue = newValue;
-                warpCursorToPulseValue(pulseHoverRow, pulseHoverValue);
-                playPulseScrollSound();
-            }
+        if (durationPopup.mouseScrolled(scrollY)) {
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
-    /** Button box (gray/hover/green/down, from {@link #WIDGETS}) + a 16x16 icon from {@link #ICONS}. */
-    private static class ModeButton extends AbstractButton {
-
-        static final int ICON_NORMAL = 0;
-        static final int ICON_LINK = 16;
-        static final int ICON_RESET = 32;
-        static final int ICON_CONFIRM = 48;
-        static final int ICON_MIXED = 64;
-
-        private final int iconU;
-        private final String titleKey;
-        private final Runnable onPress;
-        boolean green;
-        int iconOffsetX;
-        private boolean pressed;
-
-        ModeButton(int x, int y, int iconU, String titleKey, Runnable onPress) {
-            super(x, y, 18, 18, Component.empty());
-            this.iconU = iconU;
-            this.titleKey = titleKey;
-            this.onPress = onPress;
-        }
-
-        @Override
-        public void onPress() {
-            onPress.run();
-        }
-
-        @Override
-        public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            boolean handled = super.mouseClicked(mouseX, mouseY, button);
-            if (handled) {
-                pressed = true;
-            }
-            return handled;
-        }
-
-        @Override
-        public void onRelease(double mouseX, double mouseY) {
-            pressed = false;
-            super.onRelease(mouseX, mouseY);
-        }
-
-        @Override
-        protected void updateWidgetNarration(net.minecraft.client.gui.narration.NarrationElementOutput output) {
-            defaultButtonNarrationText(output);
-        }
-
-        @Override
-        protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-            int stateU;
-            if (!active) {
-                // locked out (bound advanced sensor) - flat gray box, no hover/press feedback
-                stateU = 0;
-            } else if (isHovered && pressed) {
-                stateU = 54;
-            } else if (isHovered) {
-                stateU = 18;
-            } else if (green) {
-                stateU = 36;
-            } else {
-                stateU = 0;
-            }
-            graphics.blit(WIDGETS, getX(), getY(), stateU, 0, 18, 18, 72, 18);
-            graphics.blit(ICONS, getX() + 1 + iconOffsetX, getY() + 1, iconU, 0, 16, 16, 80, 16);
-            if (!active) {
-                // dim it on top rather than skip the icon entirely, so it's still readable
-                graphics.fill(getX(), getY(), getX() + 18, getY() + 18, 0x90000000);
-            }
-        }
-    }
 }

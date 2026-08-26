@@ -2,6 +2,8 @@ package com.mbx.dynamickeycards;
 
 import com.mbx.dynamickeycards.block.AdvancedSensorRenderer;
 import com.mbx.dynamickeycards.menu.LinkDeviceScreen;
+import com.mbx.dynamickeycards.menu.ReceiverScreen;
+import com.mbx.dynamickeycards.menu.TransmitterScreen;
 import com.mbx.dynamickeycards.registry.DKBlockEntities;
 import com.mbx.dynamickeycards.registry.DKMenuTypes;
 import net.minecraft.client.gui.screens.MenuScreens;
@@ -25,6 +27,8 @@ public class DKClientSetup {
     @SubscribeEvent
     static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
         event.register(DKMenuTypes.LINK_DEVICE.get(), LinkDeviceScreen::new);
+        event.register(DKMenuTypes.TRANSMITTER.get(), TransmitterScreen::new);
+        event.register(DKMenuTypes.RECEIVER.get(), ReceiverScreen::new);
     }
 
     @SubscribeEvent

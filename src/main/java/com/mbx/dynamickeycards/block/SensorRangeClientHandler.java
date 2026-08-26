@@ -73,7 +73,7 @@ public class SensorRangeClientHandler {
 
     /** Generous on purpose - "held the tagged dust" is the real gate, this is just sanity so it doesn't render across the whole map. */
     private static final double MAX_RANGE = 48.0;
-    /** A muted red - toned down from an earlier, much more saturated version. */
+    /** A muted red. */
     private static final int EDGE_COLOR = 0xCC5C54;
     /** Hovered - the look ray actually hits the box. */
     private static final float LINE_WIDTH_HOVERED = 1 / 20f;

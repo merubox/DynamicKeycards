@@ -2,23 +2,23 @@ package com.mbx.dynamickeycards.compat.create;
 
 import com.mbx.dynamickeycards.block.LinkDeviceBlockEntity;
 import net.minecraft.world.level.Level;
-import net.neoforged.fml.ModList;
 
 /**
  * Gateway between any {@link LinkDeviceBlockEntity} (the card reader, or a motion sensor) and
  * Create's Redstone Link network. Create is an optional runtime dependency (compileOnly), so
- * every call here is guarded by {@link #isLoaded()} and every Create type stays inside this
- * package — callers only ever see an {@code Object} handle, never {@code IRedstoneLinkable} or
- * {@code Create} directly, so their own classes never force those types to resolve when Create
- * isn't installed.
+ * every call here is guarded by {@link CreateAvailability#isLoaded} and every Create type stays
+ * inside this package — callers only ever see an {@code Object} handle, never
+ * {@code IRedstoneLinkable} or {@code Create} directly, so their own classes never force those
+ * types to resolve when Create isn't installed.
+ *
+ * <p>The "is Create loaded" check itself deliberately does <em>not</em> live here - see
+ * {@link CreateAvailability}'s own doc for why sharing a class with these Create-referencing
+ * methods made it unsafe to call from anywhere that hadn't already linked this class some other
+ * way.
  */
 public final class CreateLinkCompat {
 
     private CreateLinkCompat() {
-    }
-
-    public static boolean isLoaded() {
-        return ModList.get().isLoaded("create");
     }
 
     /** Builds the adapter once per device block entity; store the result as an opaque Object. */
