@@ -6,6 +6,7 @@ import com.mbx.dynamickeycards.block.CardDuplicatorBlockEntity;
 import com.mbx.dynamickeycards.block.CardReaderBlockEntity;
 import com.mbx.dynamickeycards.block.MotionSensorBlockEntity;
 import com.mbx.dynamickeycards.block.ReceiverBlockEntity;
+import com.mbx.dynamickeycards.block.SirenBlockEntity;
 import com.mbx.dynamickeycards.block.TransmitterBlockEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -44,4 +45,8 @@ public class DKBlockEntities {
     public static final Supplier<BlockEntityType<ReceiverBlockEntity>> RECEIVER =
             BLOCK_ENTITIES.register("receiver", () -> BlockEntityType.Builder.of(ReceiverBlockEntity::new,
                     DKBlocks.RECEIVER.get()).build(null));
+
+    public static final Supplier<BlockEntityType<SirenBlockEntity>> SIREN =
+            BLOCK_ENTITIES.register("siren", () -> BlockEntityType.Builder.of(SirenBlockEntity::new,
+                    DKBlocks.SIREN.get()).build(null));
 }

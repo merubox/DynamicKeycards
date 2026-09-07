@@ -99,7 +99,8 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
     private final DurationPopup durationPopup = new DurationPopup(this,
             () -> menu.getDevice().getSignalLength(),
             ticks -> sendButtonClick(LinkDeviceMenu.SIGNAL_LENGTH_ID_BASE + ticks),
-            () -> Component.translatable("dynamickeycards.link_device.signal_length"));
+            () -> Component.translatable("dynamickeycards.link_device.signal_length"),
+            DurationPopup.TICKS_SECONDS_MINUTES);
 
     public LinkDeviceScreen(LinkDeviceMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -187,9 +188,14 @@ public class LinkDeviceScreen extends AbstractContainerScreen<LinkDeviceMenu> {
         // locking them out the same "dimmed, clicks ignored" way whenever Create isn't installed,
         // rather than leaving them clickable into a mode that can never actually take effect
         boolean createAvailable = CreateAvailability.isLoaded();
-        normalModeButton.active = editable;
         linkModeButton.active = editable && createAvailable;
         simultaneousModeButton.active = editable && createAvailable;
+        // with those two locked, NORMAL is the only mode left to pick and it's already picked -
+        // a lone lit button with no reason to press it. Locked as well, with one exception: a
+        // world where Create was *removed* after the mode was set can be sitting in LINK, which
+        // emits nothing physical (SignalMode#linkActive) and nothing wireless either without
+        // Create - so the way back to NORMAL has to stay open or that device is stuck dead.
+        normalModeButton.active = editable && (createAvailable || mode != SignalMode.NORMAL);
     }
 
     /**

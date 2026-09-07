@@ -1,6 +1,0 @@
-{
-  "parent": "block/block",
-  "textures": {
-    "particle": "dynamickeycards:block/sensor/ceiling/sensor_ceiling_gold_face_off"
-  }
-}

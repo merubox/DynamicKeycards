@@ -1,6 +1,106 @@
 {
   "variants": {
-    "present=false": { "model": "dynamickeycards:block/sensor/empty_ceiling" },
-    "present=true": { "model": "dynamickeycards:block/sensor/empty_ceiling" }
+    "accent=none,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_off"
+    },
+    "accent=none,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_on"
+    },
+    "accent=white,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_white_off"
+    },
+    "accent=white,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_white_on"
+    },
+    "accent=orange,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_orange_off"
+    },
+    "accent=orange,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_orange_on"
+    },
+    "accent=magenta,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_magenta_off"
+    },
+    "accent=magenta,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_magenta_on"
+    },
+    "accent=light_blue,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_light_blue_off"
+    },
+    "accent=light_blue,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_light_blue_on"
+    },
+    "accent=yellow,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_yellow_off"
+    },
+    "accent=yellow,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_yellow_on"
+    },
+    "accent=lime,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_lime_off"
+    },
+    "accent=lime,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_lime_on"
+    },
+    "accent=pink,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_pink_off"
+    },
+    "accent=pink,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_pink_on"
+    },
+    "accent=gray,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_gray_off"
+    },
+    "accent=gray,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_gray_on"
+    },
+    "accent=light_gray,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_light_gray_off"
+    },
+    "accent=light_gray,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_light_gray_on"
+    },
+    "accent=cyan,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_cyan_off"
+    },
+    "accent=cyan,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_cyan_on"
+    },
+    "accent=purple,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_purple_off"
+    },
+    "accent=purple,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_purple_on"
+    },
+    "accent=blue,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_blue_off"
+    },
+    "accent=blue,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_blue_on"
+    },
+    "accent=brown,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_brown_off"
+    },
+    "accent=brown,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_brown_on"
+    },
+    "accent=green,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_green_off"
+    },
+    "accent=green,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_green_on"
+    },
+    "accent=red,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_red_off"
+    },
+    "accent=red,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_red_on"
+    },
+    "accent=black,present=false": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_black_off"
+    },
+    "accent=black,present=true": {
+      "model": "dynamickeycards:block/sensor/advanced_ceiling_sensor_black_on"
+    }
   }
 }

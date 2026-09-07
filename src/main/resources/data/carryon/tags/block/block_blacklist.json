@@ -12,6 +12,7 @@
     "dynamickeycards:wall_sensor",
     "dynamickeycards:ceiling_sensor",
     "dynamickeycards:advanced_wall_sensor",
-    "dynamickeycards:advanced_ceiling_sensor"
+    "dynamickeycards:advanced_ceiling_sensor",
+    "dynamickeycards:siren"
   ]
 }

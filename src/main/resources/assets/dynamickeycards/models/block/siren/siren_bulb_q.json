@@ -1,0 +1,200 @@
+{
+ "parent": "block/block",
+ "render_type": "solid",
+ "ambientocclusion": false,
+ "textures": {
+  "siren_bulb_u": "dynamickeycards:block/siren/siren_bulb_u",
+  "siren_bulb_ns": "dynamickeycards:block/siren/siren_bulb_ns",
+  "siren_bulb_ew": "dynamickeycards:block/siren/siren_bulb_ew",
+  "siren_bulb_d": "dynamickeycards:block/siren/siren_bulb_d",
+  "particle": "dynamickeycards:block/siren/siren_reflector_u"
+ },
+ "elements": [
+  {
+   "from": [
+    7.5,
+    3.5,
+    7.75
+   ],
+   "to": [
+    8.5,
+    4.5,
+    8.25
+   ],
+   "faces": {
+    "east": {
+     "texture": "#siren_bulb_ns",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "west": {
+     "texture": "#siren_bulb_ns",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "north": {
+     "texture": "#siren_bulb_ew",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "south": {
+     "texture": "#siren_bulb_ew",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "up": {
+     "texture": "#siren_bulb_u",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "down": {
+     "texture": "#siren_bulb_d",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7.75,
+    3.5,
+    8.25
+   ],
+   "to": [
+    8.25,
+    4.5,
+    8.5
+   ],
+   "faces": {
+    "east": {
+     "texture": "#siren_bulb_ns",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "west": {
+     "texture": "#siren_bulb_ns",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "south": {
+     "texture": "#siren_bulb_ew",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "up": {
+     "texture": "#siren_bulb_u",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "down": {
+     "texture": "#siren_bulb_d",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7.75,
+    3.5,
+    7.5
+   ],
+   "to": [
+    8.25,
+    4.5,
+    7.75
+   ],
+   "faces": {
+    "east": {
+     "texture": "#siren_bulb_ns",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "west": {
+     "texture": "#siren_bulb_ns",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "north": {
+     "texture": "#siren_bulb_ew",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "up": {
+     "texture": "#siren_bulb_u",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    },
+    "down": {
+     "texture": "#siren_bulb_d",
+     "uv": [
+      0,
+      0,
+      1,
+      1
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -72,16 +72,24 @@ public class CardDuplicatorBlockEntity extends BlockEntity implements WrenchPick
         }
     }
 
+    /**
+     * Note {@code SourceIsManager} is written unconditionally, even though it only means anything
+     * alongside {@code SourceKeys}: it keeps the tag from ever being empty. A block entity update
+     * packet carrying an empty tag is discarded client-side without loading it
+     * ({@code ClientPacketListener#handleBlockEntityData} skips {@code loadWithComponents} for an
+     * empty tag), so clearing the source used to leave clients still holding the old keys - the
+     * Jade tooltip kept reading "copy pending" after a cancel.
+     */
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
+        tag.putBoolean("SourceIsManager", sourceIsManager);
         if (sourceKeys != null) {
             ListTag keys = new ListTag();
             for (UUID key : sourceKeys) {
                 keys.add(NbtUtils.createUUID(key));
             }
             tag.put("SourceKeys", keys);
-            tag.putBoolean("SourceIsManager", sourceIsManager);
         }
     }
 

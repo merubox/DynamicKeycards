@@ -7,7 +7,7 @@ import com.mbx.dynamickeycards.block.TransmitterBlock;
 import com.mbx.dynamickeycards.client.BoxRenderUtil;
 import com.mbx.dynamickeycards.item.BoundSensorBlockItem;
 import com.mbx.dynamickeycards.item.LinkedReaderBlockItem;
-import com.mbx.dynamickeycards.item.ReceiverBlockItem;
+import com.mbx.dynamickeycards.item.SourceBindableItem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
@@ -191,7 +191,7 @@ public class DKClientEvents {
 
     /**
      * The reader, transmitter, or sensor a held {@link BoundSensorBlockItem},
-     * {@link LinkedReaderBlockItem}, or {@link ReceiverBlockItem} is set to connect with, if any.
+     * {@link LinkedReaderBlockItem}, or {@link SourceBindableItem} is set to connect with, if any.
      */
     @Nullable
     private static BlockPos targetOf(ItemStack stack) {
@@ -204,16 +204,17 @@ public class DKClientEvents {
             UUID targetId = LinkedReaderBlockItem.linkedReader(stack);
             return targetId != null ? ClientDeviceCache.getPosition(targetId) : null;
         }
-        if (stack.getItem() instanceof ReceiverBlockItem) {
-            UUID targetId = ReceiverBlockItem.boundSource(stack);
-            return targetId != null ? ClientDeviceCache.getPosition(targetId) : null;
+        // the receiver and the siren both tune to a SignalSource through the same component
+        UUID boundSource = SourceBindableItem.boundSource(stack);
+        if (boundSource != null) {
+            return ClientDeviceCache.getPosition(boundSource);
         }
         return null;
     }
 
     /**
      * Whether {@code block} is a valid highlight target: a card reader, a transmitter, or either
-     * kind of motion sensor - a transmitter only ever matters as a {@link ReceiverBlockItem}'s
+     * kind of motion sensor - a transmitter only ever matters as a {@link SourceBindableItem}'s
      * bound source, since nothing else in this mod ever binds to one.
      */
     private static boolean isHighlightable(Block block) {

@@ -1,12 +1,7 @@
 package com.mbx.dynamickeycards.event;
 
 import com.mbx.dynamickeycards.DynamicKeycards;
-import com.mbx.dynamickeycards.block.CardDuplicatorBlock;
-import com.mbx.dynamickeycards.block.CardReaderBlock;
-import com.mbx.dynamickeycards.block.CeilingSensorBlock;
-import com.mbx.dynamickeycards.block.ReceiverBlock;
-import com.mbx.dynamickeycards.block.TransmitterBlock;
-import com.mbx.dynamickeycards.block.WallSensorBlock;
+import com.mbx.dynamickeycards.block.WrenchPickupBlock;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -38,9 +33,10 @@ public class DKEvents {
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         Level level = event.getLevel();
         BlockState state = level.getBlockState(event.getPos());
-        if (!(state.getBlock() instanceof CardReaderBlock || state.getBlock() instanceof CardDuplicatorBlock
-                || state.getBlock() instanceof TransmitterBlock || state.getBlock() instanceof ReceiverBlock
-                || state.getBlock() instanceof WallSensorBlock || state.getBlock() instanceof CeilingSensorBlock)) {
+        // every wrench-pickable device, by the interface rather than a list of block classes: the
+        // list had to be extended by hand for each new device, and a device left out of it has its
+        // wrench clicks swallowed before useItemOn ever runs, exactly the failure described above
+        if (!(state.getBlock() instanceof WrenchPickupBlock)) {
             return;
         }
         event.setUseBlock(TriState.TRUE);

@@ -1,0 +1,138 @@
+{
+ "parent": "block/block",
+ "render_type": "translucent",
+ "textures": {
+  "siren": "dynamickeycards:block/siren/siren",
+  "particle": "dynamickeycards:block/siren/siren"
+ },
+ "elements": [
+  {
+   "from": [
+    6,
+    2,
+    6
+   ],
+   "to": [
+    10,
+    6,
+    10
+   ],
+   "faces": {
+    "south": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      12,
+      10,
+      16
+     ]
+    },
+    "west": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      12,
+      10,
+      16
+     ]
+    },
+    "north": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      12,
+      10,
+      16
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7,
+    6,
+    7
+   ],
+   "to": [
+    9,
+    7,
+    9
+   ],
+   "faces": {
+    "south": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      10,
+      12,
+      11
+     ]
+    },
+    "west": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      10,
+      12,
+      11
+     ]
+    },
+    "north": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      10,
+      12,
+      11
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    6,
+    6,
+    6
+   ],
+   "to": [
+    9,
+    6,
+    10
+   ],
+   "faces": {
+    "up": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      8,
+      9,
+      12
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7,
+    7,
+    7
+   ],
+   "to": [
+    8,
+    7,
+    9
+   ],
+   "faces": {
+    "up": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      8,
+      11,
+      10
+     ]
+    }
+   }
+  }
+ ]
+}

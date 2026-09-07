@@ -1,17 +1,10 @@
 package com.mbx.dynamickeycards.block;
 
 import com.mbx.dynamickeycards.DKConfig;
-import com.mbx.dynamickeycards.item.EstateKeycardItem;
-import com.mbx.dynamickeycards.item.GoldenKeycardItem;
-import com.mbx.dynamickeycards.item.KeycardItem;
 import com.mbx.dynamickeycards.registry.DKBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.IntArrayTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtUtils;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -25,11 +18,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -94,33 +82,10 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
      * open) MODE.
      */
     private long simultaneousBlipActiveUntilGameTime = -1;
-    /**
-     * Legacy {@link BlockPos}-based links read from a pre-0.1.8 save, held here only until
-     * {@link #onLoad} can resolve each one to the linked reader's own {@link #deviceId} (which
-     * requires the level, not available yet during {@link #loadAdditional}) - see {@link #onLoad}
-     * for the resolution itself and its limits.
-     */
-    private List<BlockPos> legacyLinkedReaderPositions = List.of();
-
     @Nullable
     private UUID owner;
-    private final Set<UUID> registeredCards = new HashSet<>();
-    /** Own keys of individually blocked cards — the block always beats the allow list. */
-    private final Set<UUID> blockedCards = new HashSet<>();
-    /**
-     * Other readers this one shares registered/blocked cards with (see {@link #accepts}) - each
-     * entry added on both ends when one reader is placed while linked to the other (see
-     * {@code LinkedReaderBlockItem}/{@code CardReaderBlock#setPlacedBy}). Everything else about
-     * a reader - owner, mode/frequency, pulse - stays independent; this only affects which cards
-     * a tap here accepts. Identifies each linked reader by its {@link #deviceId} rather than a
-     * raw {@link BlockPos} - see {@link DeviceIndex}'s own doc for why.
-     *
-     * <p>A set, not a single link: the whole connected group - however many readers, in whatever
-     * shape (chain, star, even a loop) - shares one combined accept list, so {@link #accepts}
-     * walks the full reachable set (see {@link #linkedGroup()}), not just this field's own
-     * direct entries.
-     */
-    private final Set<UUID> linkedReaderIds = new HashSet<>();
+    /** The allow list, the block list, and the linked-reader ids - see {@link CardAccessState}. */
+    private final CardAccessState cards = new CardAccessState(this);
     private boolean registerMode;
     /**
      * How long a destructive action's confirming second click stays armed before it has to be
@@ -456,35 +421,11 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
         DeviceIndex index = DeviceRegistry.registerOnLoad(this, deviceId);
         if (index != null) {
             publishSignalSource(level);
-            resolveLegacyLinkedReaders(index);
-        }
-    }
-
-    /**
-     * Best-effort migration for a pre-0.1.8 save's {@code BlockPos}-based links (see
-     * {@link #legacyLinkedReaderPositions}): resolves each stored position to the reader actually
-     * there right now and adopts its {@link #deviceId}. Only works for a target whose chunk
-     * happens to be loaded at this exact moment - one whose chunk is still unloaded is simply
-     * dropped rather than force-loaded (out of scope for this pass, see {@code ROADMAP.md}), so a
-     * link to a very distant reader may need to be re-established by hand after upgrading. Runs
-     * once - {@link #legacyLinkedReaderPositions} is cleared after, regardless of how many
-     * resolved, so a reload doesn't keep re-attempting positions that were already given up on.
-     */
-    private void resolveLegacyLinkedReaders(DeviceIndex index) {
-        if (legacyLinkedReaderPositions.isEmpty()) {
-            return;
-        }
-        boolean changed = false;
-        for (BlockPos pos : legacyLinkedReaderPositions) {
-            if (level.hasChunk(pos.getX() >> 4, pos.getZ() >> 4)
-                    && level.getBlockEntity(pos) instanceof CardReaderBlockEntity linked) {
-                linkedReaderIds.add(linked.deviceId);
-                changed = true;
+            // the level is only attached now, which is what resolving a pre-0.1.8 save's
+            // position-based links needs - see CardAccessState#resolveLegacyLinks
+            if (cards.resolveLegacyLinks(level)) {
+                this.syncToClient();
             }
-        }
-        legacyLinkedReaderPositions = List.of();
-        if (changed) {
-            this.syncToClient();
         }
     }
 
@@ -494,47 +435,46 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
         linkState.setRemoved();
     }
 
+    /** For {@link CardAccessState}'s own group walk, which reads every linked reader's state in turn. */
+    CardAccessState cardAccess() {
+        return cards;
+    }
+
     public boolean isRegistered(UUID cardId) {
-        return registeredCards.contains(cardId);
+        return cards.isRegistered(cardId);
     }
 
     public void registerCard(UUID cardId) {
-        registeredCards.add(cardId);
+        cards.registerCard(cardId);
         this.syncToClient();
     }
 
     /** True if any of the given keys is registered. Blocking is checked separately, first. */
     public boolean isRegisteredAny(Iterable<UUID> keys) {
-        for (UUID key : keys) {
-            if (registeredCards.contains(key)) {
-                return true;
-            }
-        }
-        return false;
+        return cards.isRegisteredAny(keys);
     }
 
     public int getRegisteredCount() {
-        return registeredCards.size();
+        return cards.registeredCount();
     }
 
     public void removeCard(UUID cardId) {
-        registeredCards.remove(cardId);
+        cards.removeCard(cardId);
         this.syncToClient();
     }
 
     public void clearCards() {
-        registeredCards.clear();
-        blockedCards.clear();
+        cards.clear();
         this.syncToClient();
     }
 
     public Set<UUID> getLinkedReaders() {
-        return Set.copyOf(linkedReaderIds);
+        return cards.linkedReaders();
     }
 
     /** Server-side only; doesn't touch the other end - see {@code CardReaderBlock#setPlacedBy} for the mutual case. */
     public void addLinkedReader(UUID id) {
-        if (linkedReaderIds.add(id)) {
+        if (cards.addLinkedReader(id)) {
             this.syncToClient();
         }
     }
@@ -548,164 +488,63 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
      * accurate for anything that reads it directly (e.g. a future UI).
      */
     public void removeLinkedReader(UUID id) {
-        if (linkedReaderIds.remove(id)) {
+        if (cards.removeLinkedReader(id)) {
             this.syncToClient();
         }
     }
 
-    /**
-     * This reader plus every reader reachable by following {@link #linkedReaderIds} from here - a
-     * breadth-first walk of the whole connected group, however many readers are in it or whatever
-     * shape they're linked in (chain, star, even a loop; a loop is exactly as safe as any other
-     * shape since {@code visited} stops it from being walked twice). Two readers linked only
-     * through a third one still end up sharing one accept list this way, which a single
-     * direct-neighbor check wouldn't give them.
-     *
-     * <p>Resolving an id to a position (via {@link DeviceIndex}) and then reading its actual data
-     * still needs {@code Level#getBlockEntity}, which force-loads whatever chunk that position is
-     * in if it isn't already loaded (confirmed against vanilla's own {@code LevelReader}) - the id
-     * migration fixes staleness and Create-move safety, not this cost, see the class doc. Callers
-     * on a hot path (see {@link #accepts(ItemStack)}/{@link #acceptsAny}) should call this once
-     * and reuse the result rather than once per item/check.
-     */
-    private Set<CardReaderBlockEntity> linkedGroup() {
-        Set<CardReaderBlockEntity> visited = new HashSet<>();
-        visited.add(this);
-        if (!(level instanceof ServerLevel serverLevel)) {
-            return visited;
-        }
-        DeviceIndex index = DeviceIndex.get(serverLevel);
-        Deque<CardReaderBlockEntity> frontier = new ArrayDeque<>(visited);
-        while (!frontier.isEmpty()) {
-            CardReaderBlockEntity current = frontier.poll();
-            for (UUID id : current.linkedReaderIds) {
-                BlockPos pos = index.getPosition(id);
-                if (pos != null && level.getBlockEntity(pos) instanceof CardReaderBlockEntity linked && visited.add(linked)) {
-                    frontier.add(linked);
-                }
-            }
-        }
-        return visited;
-    }
-
     public boolean isBlocked(UUID ownKey) {
-        return blockedCards.contains(ownKey);
+        return cards.isBlocked(ownKey);
     }
 
     public void blockCard(UUID ownKey) {
-        blockedCards.add(ownKey);
+        cards.blockCard(ownKey);
         this.syncToClient();
     }
 
     public void unblockCard(UUID ownKey) {
-        blockedCards.remove(ownKey);
+        cards.unblockCard(ownKey);
         this.syncToClient();
     }
 
-    /**
-     * Whether {@code key} is registered anywhere in this reader's linked group (see
-     * {@link #linkedGroup()}), not just here - what {@link CardReaderBlock#useItemOn}'s
-     * register-mode tap should check before deciding to register vs. remove, so tapping a card
-     * that's already registered via a linked reader is recognized as "already has access" instead
-     * of silently registering a second, redundant local copy here too.
-     */
+    /** @see CardAccessState#isRegisteredInGroup */
     public boolean isRegisteredInGroup(UUID key) {
-        return isRegisteredAnyIn(List.of(key), linkedGroup());
+        return cards.isRegisteredInGroup(key);
     }
 
-    /** Same as {@link #isRegisteredInGroup}, for {@link #isBlocked}. */
+    /** @see CardAccessState#isBlockedInGroup */
     public boolean isBlockedInGroup(UUID key) {
-        return isBlockedIn(key, linkedGroup());
+        return cards.isBlockedInGroup(key);
     }
 
-    /** Same as {@link #isRegisteredInGroup}, for {@link #isRegisteredAny}. */
+    /** @see CardAccessState#isRegisteredAnyInGroup */
     public boolean isRegisteredAnyInGroup(Iterable<UUID> keys) {
-        return isRegisteredAnyIn(keys, linkedGroup());
+        return cards.isRegisteredAnyInGroup(keys);
     }
 
-    /**
-     * Removes {@code key} from wherever it's actually stored across this reader's linked group -
-     * not just here. {@link #removeCard} alone would leave a stale registration on whichever
-     * reader the card was originally registered on, so revoking from a different reader in the
-     * same group would silently not take.
-     */
+    /** @see CardAccessState#removeRegisteredFromGroup */
     public void removeRegisteredFromGroup(UUID key) {
-        for (CardReaderBlockEntity reader : linkedGroup()) {
-            reader.removeCard(key);
-        }
+        cards.removeRegisteredFromGroup(key);
     }
 
-    /** Same as {@link #removeRegisteredFromGroup}, for {@link #unblockCard}. */
+    /** @see CardAccessState#unblockInGroup */
     public void unblockInGroup(UUID key) {
-        for (CardReaderBlockEntity reader : linkedGroup()) {
-            reader.unblockCard(key);
-        }
+        cards.unblockInGroup(key);
     }
 
-    /**
-     * Whether tapping {@code stack} against this reader right now would be accepted - the same
-     * rule {@link CardReaderBlock#useItemOn}'s tap path applies, minus the side effects. Register
-     * mode isn't considered here - that's a physical-tap-only flow (arming/toggling
-     * registration), not something an ambient sensor should ever trigger.
-     */
+    /** @see CardAccessState#clearCardsInGroup */
+    public void clearCardsInGroup() {
+        cards.clearCardsInGroup();
+    }
+
+    /** @see CardAccessState#accepts */
     public boolean accepts(ItemStack stack) {
-        return accepts(stack, linkedGroup());
+        return cards.accepts(stack);
     }
 
-    /**
-     * Whether any non-empty stack in {@code inventory} would be accepted by this reader right
-     * now - same rule as {@link #accepts(ItemStack)}, but for {@code AdvancedSensorBlockEntity}'s
-     * per-tick whole-inventory scan: {@link #linkedGroup()} (a BFS that can force-load every
-     * linked reader's chunk, see its own doc) is computed once for the whole inventory here,
-     * instead of once per stack the way calling {@link #accepts(ItemStack)} in a loop would.
-     */
+    /** @see CardAccessState#acceptsAny */
     public boolean acceptsAny(Inventory inventory) {
-        Set<CardReaderBlockEntity> group = linkedGroup();
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (!stack.isEmpty() && accepts(stack, group)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean accepts(ItemStack stack, Set<CardReaderBlockEntity> group) {
-        if (stack.getItem() instanceof GoldenKeycardItem) {
-            return true;
-        }
-        if (stack.getItem() instanceof EstateKeycardItem) {
-            UUID cardOwner = EstateKeycardItem.boundOwner(stack);
-            return cardOwner != null && cardOwner.equals(owner);
-        }
-        if (!(stack.getItem() instanceof KeycardItem)) {
-            return false;
-        }
-        UUID ownKey = KeycardItem.ownKey(stack);
-        if (ownKey == null || isBlockedIn(ownKey, group)) {
-            return false;
-        }
-        return isRegisteredAnyIn(KeycardItem.allKeys(stack), group);
-    }
-
-    /** {@link #isBlocked}, but honoring every reader in {@code group} - see {@link #linkedGroup()}. */
-    private static boolean isBlockedIn(UUID ownKey, Set<CardReaderBlockEntity> group) {
-        for (CardReaderBlockEntity reader : group) {
-            if (reader.isBlocked(ownKey)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** {@link #isRegisteredAny}, but honoring every reader in {@code group} - see {@link #linkedGroup()}. */
-    private static boolean isRegisteredAnyIn(Iterable<UUID> keys, Set<CardReaderBlockEntity> group) {
-        for (CardReaderBlockEntity reader : group) {
-            if (reader.isRegisteredAny(keys)) {
-                return true;
-            }
-        }
-        return false;
+        return cards.acceptsAny(inventory);
     }
 
     private void syncToClient() {
@@ -722,26 +561,12 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
         if (owner != null) {
             tag.putUUID("Owner", owner);
         }
-        ListTag cards = new ListTag();
-        for (UUID id : registeredCards) {
-            cards.add(NbtUtils.createUUID(id));
-        }
-        tag.put("Cards", cards);
-        ListTag blocked = new ListTag();
-        for (UUID id : blockedCards) {
-            blocked.add(NbtUtils.createUUID(id));
-        }
-        tag.put("Blocked", blocked);
+        cards.save(tag);
         tag.putBoolean("RegisterMode", registerMode);
         if (signalLength >= 0) {
             tag.putInt("PulseLength", signalLength);
         }
         linkState.save(tag, registries);
-        ListTag linked = new ListTag();
-        for (UUID id : linkedReaderIds) {
-            linked.add(NbtUtils.createUUID(id));
-        }
-        tag.put("LinkedReaderIds", linked);
     }
 
     @Override
@@ -749,14 +574,7 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
         super.loadAdditional(tag, registries);
         deviceId = DeviceRegistry.load(tag);
         owner = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
-        registeredCards.clear();
-        for (Tag card : tag.getList("Cards", Tag.TAG_INT_ARRAY)) {
-            registeredCards.add(NbtUtils.loadUUID(card));
-        }
-        blockedCards.clear();
-        for (Tag card : tag.getList("Blocked", Tag.TAG_INT_ARRAY)) {
-            blockedCards.add(NbtUtils.loadUUID(card));
-        }
+        cards.load(tag);
         registerMode = tag.getBoolean("RegisterMode");
         signalLength = tag.contains("PulseLength") ? tag.getInt("PulseLength") : -1;
         linkState.load(tag, registries);
@@ -766,28 +584,6 @@ public class CardReaderBlockEntity extends BlockEntity implements LinkDeviceBloc
         // saves already have an explicit SignalMode entry, which linkState.load just applied.
         if (!tag.contains("SignalMode") && tag.getBoolean("BroadcastEnabled")) {
             linkState.setSignalModeRaw(SignalMode.SIMULTANEOUS);
-        }
-        linkedReaderIds.clear();
-        if (tag.contains("LinkedReaderIds")) {
-            // 0.1.8+ save: already device ids, no resolution needed
-            for (Tag entry : tag.getList("LinkedReaderIds", Tag.TAG_INT_ARRAY)) {
-                linkedReaderIds.add(NbtUtils.loadUUID(entry));
-            }
-        } else {
-            // pre-0.1.8 save: BlockPos-based, resolved to ids best-effort once the level is
-            // available - see #onLoad/#resolveLegacyLinkedReaders
-            List<BlockPos> legacy = new ArrayList<>();
-            // pre-0.1.6 saves only ever had one entry, under the old singular key
-            if (tag.contains("LinkedReader")) {
-                NbtUtils.readBlockPos(tag, "LinkedReader").ifPresent(legacy::add);
-            }
-            for (Tag entry : tag.getList("LinkedReaders", Tag.TAG_INT_ARRAY)) {
-                if (entry instanceof IntArrayTag intArray && intArray.getAsIntArray().length == 3) {
-                    int[] xyz = intArray.getAsIntArray();
-                    legacy.add(new BlockPos(xyz[0], xyz[1], xyz[2]));
-                }
-            }
-            legacyLinkedReaderPositions = legacy;
         }
         // only ever non-null here (as opposed to during a plain disk-chunk load, where the level
         // isn't attached until after this returns) when NBT is being pasted onto an already-placed

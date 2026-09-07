@@ -15,24 +15,31 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
+import java.util.function.IntFunction;
+import java.util.function.IntSupplier;
 
 /**
- * The shared config screen for a device whose whole UI is "pick one of N modes, plus one
- * tick-valued duration" - currently the receiver ({@link ReceiverScreen}) and the transmitter
- * ({@link TransmitterScreen}). Both were the same 570-line screen with two names; everything that
- * actually differs between them is now the small subclass contract below.
+ * The shared config screen for a device whose whole UI is "pick one of N modes, plus some
+ * tick-valued durations" - the receiver ({@link ReceiverScreen}), the transmitter
+ * ({@link TransmitterScreen}), and the siren ({@link SirenScreen}). The first two were the same
+ * 570-line screen with two names; everything that actually differs between them is now the small
+ * subclass contract below.
  *
  * <p>Layout is {@code LinkDeviceScreen}'s, reused wholesale: the same background panel and
  * player-inventory panel textures, the same button row at y={@value #BUTTON_Y} with mode buttons
- * from x={@value #FIRST_MODE_BUTTON_X} spaced {@value #MODE_BUTTON_SPACING} apart, the duration
- * readout at x={@value #PULSE_BOX_X}, reset at x={@value #RESET_BUTTON_X} and done at
- * x={@value #CONFIRM_BUTTON_X}. The confirm button does nothing but close the screen - it exists
- * because the shared background art already draws its frame there, so leaving it unwired would
- * look like dead, unclickable decoration.
+ * from x={@value #FIRST_MODE_BUTTON_X} spaced {@value #MODE_BUTTON_SPACING} apart, reset at
+ * x={@value #RESET_BUTTON_X} and done at x={@value #CONFIRM_BUTTON_X}. The confirm button does
+ * nothing but close the screen - it exists because the shared background art already draws its
+ * frame there, so leaving it unwired would look like dead, unclickable decoration.
  *
- * <p>The duration readout opens {@link DurationPopup} when right-click is held on it for
+ * <p>Duration readouts sit wherever their {@link DurationSpec} puts them: one in the button row
+ * for the receiver and transmitter ({@link DurationSpec#inButtonRow}), two stacked in the panel
+ * for the siren - which is also why the background is a {@link #background()} the subclass can
+ * repoint, since the boxes are drawn into the art rather than by this class.
+ *
+ * <p>A readout opens its own {@link DurationPopup} when right-click is held on it for
  * {@value #PULSE_HOLD_OPEN_TICKS} ticks; this class owns the hold counter and the hit test, and
- * routes the mouse callbacks into the popup.
+ * routes the mouse callbacks into whichever popup is open.
  */
 abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends AbstractContainerScreen<M> {
 
@@ -43,6 +50,23 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
      * for that shared numbering.
      */
     protected record ModeSpec(int iconU, String titleKey, BooleanSupplier selected) {
+    }
+
+    /**
+     * One duration readout: where its {@value #PULSE_BOX_W}x{@value #PULSE_BOX_H} box sits on the
+     * panel, the lang-key suffix naming it (in both the tooltip and its picker's heading), how to
+     * read its value, how that value reads inside the box, and the scale its picker offers. Its
+     * menu button ids come from its index in {@link #durations()} - see
+     * {@link AbstractDeviceModeMenu}'s class doc.
+     */
+    protected record DurationSpec(int x, int y, String key, IntSupplier ticks,
+                                  IntFunction<String> readout, DurationPopup.Scale scale) {
+
+        /** The common case: the one box in the button row, edited on the ticks/seconds/minutes picker. */
+        protected static DurationSpec inButtonRow(String key, IntSupplier ticks) {
+            return new DurationSpec(PULSE_BOX_X, BUTTON_Y, key, ticks,
+                    AbstractDeviceModeScreen::formatTicksCompact, DurationPopup.TICKS_SECONDS_MINUTES);
+        }
     }
 
     private static final ResourceLocation BACKGROUND =
@@ -79,19 +103,18 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
      */
     private static final int ICON_Z = -400;
 
-    private final DurationPopup durationPopup;
     private final List<ModeButton> modeButtons = new ArrayList<>();
+    private final List<DurationPopup> durationPopups = new ArrayList<>();
     private List<ModeSpec> modeSpecs = List.of();
-    private int pulseBoxHeldTicks = -1;
+    private List<DurationSpec> durationSpecs = List.of();
+    /** Which readout right-click is being held on, or -1 for none. */
+    private int heldBox = -1;
+    private int heldTicks;
 
     protected AbstractDeviceModeScreen(M menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
         this.imageWidth = BG_WIDTH;
         this.imageHeight = BG_HEIGHT + 4 + PLAYER_INV_HEIGHT;
-        this.durationPopup = new DurationPopup(this,
-                this::durationTicks,
-                ticks -> sendButtonClick(AbstractDeviceModeMenu.DURATION_ID_BASE + ticks),
-                () -> Component.translatable(langKey(durationKey())));
     }
 
     // ---- Subclass contract ----
@@ -105,11 +128,16 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
     /** The mode buttons, left to right. Read once in {@link #init()}. */
     protected abstract List<ModeSpec> modes();
 
-    /** Lang-key suffix of the duration setting, e.g. {@code "release_delay"} - names both its tooltip and the popup heading. */
-    protected abstract String durationKey();
+    /**
+     * The duration readouts. Read once in {@link #init()}, and must stay in the same order as
+     * {@link AbstractDeviceModeMenu#durations()} - the index is the button id's range.
+     */
+    protected abstract List<DurationSpec> durations();
 
-    /** The duration setting's current value, in ticks. */
-    protected abstract int durationTicks();
+    /** The background panel art. Overridden by a layout whose boxes aren't where the default art draws them. */
+    protected ResourceLocation background() {
+        return BACKGROUND;
+    }
 
     /** Full lang key for one of this device's own suffixes. */
     private String langKey(String suffix) {
@@ -136,6 +164,18 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
                     spec.iconU(), spec.titleKey(), () -> sendButtonClick(buttonId))));
         }
 
+        // a resize re-runs init(), so the popups are rebuilt and any hold in progress is stale
+        durationPopups.clear();
+        heldBox = -1;
+        durationSpecs = List.copyOf(durations());
+        for (int i = 0; i < durationSpecs.size(); i++) {
+            DurationSpec spec = durationSpecs.get(i);
+            int idBase = AbstractDeviceModeMenu.DURATION_ID_BASE + i * AbstractDeviceModeMenu.DURATION_ID_STRIDE;
+            durationPopups.add(new DurationPopup(this, spec.ticks(),
+                    ticks -> sendButtonClick(idBase + ticks),
+                    () -> Component.translatable(langKey(spec.key())), spec.scale()));
+        }
+
         addRenderableWidget(new ModeButton(leftPos + RESET_BUTTON_X, topPos + BUTTON_Y, ModeButton.ICON_RESET,
                 null, () -> sendButtonClick(AbstractDeviceModeMenu.BUTTON_RESET)));
         // closes the screen only - see the class doc for why it's wired at all
@@ -154,7 +194,17 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
         super.containerTick();
         updateModeIndicators();
         tickPulseBoxHold();
-        durationPopup.tick();
+        durationPopups.forEach(DurationPopup::tick);
+    }
+
+    /** The popup currently on screen, if any - at most one is ever open. */
+    private DurationPopup openPopup() {
+        for (DurationPopup popup : durationPopups) {
+            if (popup.isOpen()) {
+                return popup;
+            }
+        }
+        return null;
     }
 
     /** Repoints the selected-state highlight at whichever mode the device currently reports. */
@@ -165,12 +215,12 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
     }
 
     private void tickPulseBoxHold() {
-        if (durationPopup.isOpen() || pulseBoxHeldTicks < 0) {
+        if (heldBox < 0 || openPopup() != null) {
             return;
         }
-        if (pulseBoxHeldTicks++ >= PULSE_HOLD_OPEN_TICKS) {
-            durationPopup.open();
-            pulseBoxHeldTicks = -1;
+        if (heldTicks++ >= PULSE_HOLD_OPEN_TICKS) {
+            durationPopups.get(heldBox).open();
+            heldBox = -1;
         }
     }
 
@@ -183,7 +233,7 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
 
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        graphics.blit(BACKGROUND, leftPos, topPos, 0, 0, BG_WIDTH, BG_HEIGHT, BG_WIDTH, BG_HEIGHT);
+        graphics.blit(background(), leftPos, topPos, 0, 0, BG_WIDTH, BG_HEIGHT, BG_WIDTH, BG_HEIGHT);
 
         int titleX = (BG_WIDTH - 8) / 2 - font.width(title) / 2;
         graphics.drawString(font, title, leftPos + titleX, topPos + 4, TITLE_COLOR, false);
@@ -195,18 +245,20 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
         graphics.drawString(font, playerInventoryTitle, invX + 8, invY + 6, 0x404040, false);
 
         renderDeviceIcon(graphics);
-        renderDurationBox(graphics);
+        for (DurationSpec spec : durationSpecs) {
+            renderDurationBox(graphics, spec);
+        }
     }
 
-    /** Number readout in the button row showing the current duration - the box itself is part of {@link #BACKGROUND}. */
-    private void renderDurationBox(GuiGraphics graphics) {
-        int x = leftPos + PULSE_BOX_X;
-        int y = topPos + BUTTON_Y;
-        String text = formatTicksCompact(durationTicks());
-        graphics.drawCenteredString(font, text, x + PULSE_BOX_W / 2, y + (PULSE_BOX_H - 8) / 2, 0xFFFFFF);
+    /** A readout's current value - the box it sits in is part of {@link #background()}. */
+    private void renderDurationBox(GuiGraphics graphics, DurationSpec spec) {
+        String text = spec.readout().apply(spec.ticks().getAsInt());
+        graphics.drawCenteredString(font, text, leftPos + spec.x() + PULSE_BOX_W / 2,
+                topPos + spec.y() + (PULSE_BOX_H - 8) / 2, 0xFFFFFF);
     }
 
-    private static String formatTicksCompact(int ticks) {
+    /** Coarsest unit that divides the value exactly - {@code 100} reads as {@code 5s}, {@code 7} as {@code 7t}. */
+    static String formatTicksCompact(int ticks) {
         if (ticks % 1200 == 0) {
             return (ticks / 1200) + "m";
         }
@@ -241,12 +293,12 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
 
     /** Whole-screen bounds while the duration popup is open, {@code null} otherwise - same EMI exclusion reasoning. */
     public int[] getPulseLengthPopupScreenBounds() {
-        return durationPopup.isOpen() ? new int[] {0, 0, this.width, this.height} : null;
+        return openPopup() != null ? new int[] {0, 0, this.width, this.height} : null;
     }
 
     @Override
     protected void renderTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
-        if (durationPopup.isOpen()) {
+        if (openPopup() != null) {
             return;
         }
         super.renderTooltip(graphics, mouseX, mouseY);
@@ -259,8 +311,10 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
         for (ModeButton button : modeButtons) {
             renderButtonTooltip(graphics, button, mouseX, mouseY);
         }
-        renderDurationBoxTooltip(graphics, mouseX, mouseY);
-        durationPopup.render(graphics);
+        for (DurationSpec spec : durationSpecs) {
+            renderDurationBoxTooltip(graphics, spec, mouseX, mouseY);
+        }
+        durationPopups.forEach(popup -> popup.render(graphics));
     }
 
     /**
@@ -270,7 +324,7 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
      * {@link DKTooltips#summary}'s convention elsewhere in the mod.
      */
     private void renderButtonTooltip(GuiGraphics graphics, ModeButton button, int mouseX, int mouseY) {
-        if (durationPopup.isOpen() || !button.isMouseOver(mouseX, mouseY)) {
+        if (openPopup() != null || !button.isMouseOver(mouseX, mouseY)) {
             return;
         }
         List<Component> tooltip = new ArrayList<>();
@@ -279,12 +333,12 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
         graphics.renderComponentTooltip(font, tooltip, mouseX, mouseY);
     }
 
-    private void renderDurationBoxTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
-        if (durationPopup.isOpen() || !isOverPulseBox(mouseX, mouseY)) {
+    private void renderDurationBoxTooltip(GuiGraphics graphics, DurationSpec spec, int mouseX, int mouseY) {
+        if (openPopup() != null || !isOverBox(spec, mouseX, mouseY)) {
             return;
         }
         List<Component> tooltip = new ArrayList<>();
-        tooltip.add(Component.translatable(langKey(durationKey())));
+        tooltip.add(Component.translatable(langKey(spec.key())));
         tooltip.add(Component.translatable("dynamickeycards.link_device.signal_length.hold_to_edit",
                         Component.keybind("key.use"))
                 .withStyle(ChatFormatting.GRAY));
@@ -293,39 +347,56 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
 
     // ---- Input ----
 
-    /** The small number readout in the button row - held with right-click to open {@link #durationPopup}. */
-    private boolean isOverPulseBox(double mouseX, double mouseY) {
-        int x = leftPos + PULSE_BOX_X;
-        int y = topPos + BUTTON_Y;
+    /** One readout's box - held with right-click to open its picker. */
+    private boolean isOverBox(DurationSpec spec, double mouseX, double mouseY) {
+        int x = leftPos + spec.x();
+        int y = topPos + spec.y();
         return mouseX >= x && mouseX < x + PULSE_BOX_W && mouseY >= y && mouseY < y + PULSE_BOX_H;
+    }
+
+    /** Index of the readout under the cursor, or -1. */
+    private int boxAt(double mouseX, double mouseY) {
+        for (int i = 0; i < durationSpecs.size(); i++) {
+            if (isOverBox(durationSpecs.get(i), mouseX, mouseY)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (durationPopup.mouseClicked()) {
+        DurationPopup popup = openPopup();
+        if (popup != null && popup.mouseClicked()) {
             return true;
         }
-        if (button == 1 && isOverPulseBox(mouseX, mouseY)) {
-            pulseBoxHeldTicks = 0;
-            return true;
+        if (button == 1) {
+            int box = boxAt(mouseX, mouseY);
+            if (box >= 0) {
+                heldBox = box;
+                heldTicks = 0;
+                return true;
+            }
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (durationPopup.mouseReleased(button)) {
+        DurationPopup popup = openPopup();
+        if (popup != null && popup.mouseReleased(button)) {
             return true;
         }
         if (button == 1) {
-            pulseBoxHeldTicks = -1;
+            heldBox = -1;
         }
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
     public void mouseMoved(double mouseX, double mouseY) {
-        if (durationPopup.mouseMoved(mouseX, mouseY)) {
+        DurationPopup popup = openPopup();
+        if (popup != null && popup.mouseMoved(mouseX, mouseY)) {
             return;
         }
         super.mouseMoved(mouseX, mouseY);
@@ -333,7 +404,8 @@ abstract class AbstractDeviceModeScreen<M extends AbstractContainerMenu> extends
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (durationPopup.mouseScrolled(scrollY)) {
+        DurationPopup popup = openPopup();
+        if (popup != null && popup.mouseScrolled(scrollY)) {
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);

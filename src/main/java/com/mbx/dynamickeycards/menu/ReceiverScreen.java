@@ -42,12 +42,7 @@ public class ReceiverScreen extends AbstractDeviceModeScreen<ReceiverMenu> {
     }
 
     @Override
-    protected String durationKey() {
-        return "release_delay";
-    }
-
-    @Override
-    protected int durationTicks() {
-        return menu.getDevice().getReleaseDelayTicks();
+    protected List<DurationSpec> durations() {
+        return List.of(DurationSpec.inButtonRow("release_delay", () -> menu.getDevice().getReleaseDelayTicks()));
     }
 }

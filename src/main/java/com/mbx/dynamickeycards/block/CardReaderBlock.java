@@ -13,7 +13,7 @@ import com.mbx.dynamickeycards.item.EstateKeycardItem;
 import com.mbx.dynamickeycards.item.GoldenKeycardItem;
 import com.mbx.dynamickeycards.item.KeycardItem;
 import com.mbx.dynamickeycards.item.LinkedReaderBlockItem;
-import com.mbx.dynamickeycards.item.ReceiverBlockItem;
+import com.mbx.dynamickeycards.item.SourceBindableItem;
 import com.mbx.dynamickeycards.registry.DKBlockEntities;
 import com.mbx.dynamickeycards.registry.DKComponents;
 import com.mbx.dynamickeycards.registry.DKItems;
@@ -171,7 +171,7 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             }
             if (!level.isClientSide) {
                 if (reader.isResetPending()) {
-                    reader.clearCards();
+                    reader.clearCardsInGroup();
                     reader.setRegisterMode(false);
                     setMode(level, pos, state, CardReaderMode.OFF);
                     message(player, "reset_complete", ChatFormatting.WHITE);
@@ -185,7 +185,7 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
         if (!player.isShiftKeyDown()) {
-            return InteractionResult.PASS;
+            return wornCardInteract(state, level, pos, player, reader);
         }
         if (!level.isClientSide) {
             if (reader.isOwner(player)) {
@@ -222,7 +222,7 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
         if (stack.getItem() instanceof LinkedReaderBlockItem readerItem) {
             return linkReaderItem(readerItem, stack, state, level, pos, player);
         }
-        if (stack.getItem() instanceof ReceiverBlockItem) {
+        if (stack.getItem() instanceof SourceBindableItem) {
             return bindReceiverItem(stack, state, level, pos, player);
         }
         if (player.isSpectator() || !(stack.getItem() instanceof KeycardItem)
@@ -467,6 +467,39 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
     }
 
     /** The shared "this card doesn't open this reader" response: red light for {@link #DENIED_TICKS}, message, deny sound. */
+    /**
+     * Standing, empty-handed, outside register mode: a keycard worn in Curios' necklace slot
+     * stands in for one held in hand, but <b>only for passing</b>. Configuring a reader (arming
+     * register mode, registering or removing a card, resetting) still needs it in hand - see
+     * {@link WornKeycards}. That is also why this sits on the standing branch alone: sneaking
+     * is how the owner arms register mode, and a worn card must not take that gesture over.
+     *
+     * <p>Wearing behaves exactly like holding otherwise, an unregistered card included - being
+     * refused is what tells the wearer the reader saw the card at all.
+     *
+     * <p>Without Curios, or wearing nothing, this returns {@link InteractionResult#PASS} - the
+     * same do-nothing this branch has always been.
+     */
+    private InteractionResult wornCardInteract(BlockState state, Level level, BlockPos pos,
+                                               Player player, CardReaderBlockEntity reader) {
+        if (level.isClientSide) {
+            return InteractionResult.PASS;
+        }
+        Boolean accepted = WornKeycards.acceptedWornCard(player, reader::accepts);
+        if (accepted == null) {
+            return InteractionResult.PASS;
+        }
+        if (!accepted) {
+            denyUnregisteredCard(state, level, pos, player);
+            return InteractionResult.CONSUME;
+        }
+        if (state.getValue(MODE) != CardReaderMode.OFF) {
+            return InteractionResult.CONSUME;
+        }
+        this.acceptPulse(state, level, pos, player);
+        return InteractionResult.SUCCESS;
+    }
+
     private ItemInteractionResult denyUnregisteredCard(BlockState state, Level level, BlockPos pos, Player player) {
         if (!level.isClientSide) {
             if (state.getValue(MODE) == CardReaderMode.OFF) {
@@ -497,7 +530,7 @@ public class CardReaderBlock extends FaceAttachedHorizontalDirectionalBlock impl
                     cancelRegisterMode(level, pos, state, reader, player);
                 } else if (reader.isResetPending()) {
                     // confirmed: wipe every registered card
-                    reader.clearCards();
+                    reader.clearCardsInGroup();
                     reader.setRegisterMode(false);
                     setMode(level, pos, state, CardReaderMode.OFF);
                     message(player, "reset_complete", ChatFormatting.WHITE);

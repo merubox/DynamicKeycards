@@ -15,6 +15,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
@@ -48,8 +49,7 @@ import java.util.UUID;
  *
  * <p>Right-clicking a placed one with a dye sets {@link #getAccentColor}, purely cosmetic (see
  * {@code AdvancedWallSensorBlock}/{@code AdvancedCeilingSensorBlock}'s {@code useItemOn} for the
- * interaction, and {@code AdvancedSensorRenderer} for how it's drawn); a gold nugget clears it
- * back to the native undyed look.
+ * interaction); a gold nugget clears it back to the native undyed look.
  */
 public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity implements SignalSource {
 
@@ -395,6 +395,27 @@ public class AdvancedSensorBlockEntity extends MotionSensorBlockEntity implement
     public void onLoad() {
         super.onLoad();
         resolveLegacyBinding();
+        syncAccentToBlockState();
+    }
+
+    /**
+     * Pushes the saved accent into the blockstate for a sensor placed before the accent became a
+     * blockstate property - those saves have the color in NBT only, so their blockstate would sit
+     * at {@link SensorAccent#NONE} and render undyed. Server-side only, and a no-op once they
+     * already agree.
+     */
+    private void syncAccentToBlockState() {
+        if (level == null || level.isClientSide) {
+            return;
+        }
+        BlockState state = getBlockState();
+        if (!state.hasProperty(AdvancedSensorDyeing.ACCENT)) {
+            return;
+        }
+        SensorAccent expected = SensorAccent.of(accentColor);
+        if (state.getValue(AdvancedSensorDyeing.ACCENT) != expected) {
+            level.setBlock(worldPosition, state.setValue(AdvancedSensorDyeing.ACCENT, expected), Block.UPDATE_ALL);
+        }
     }
 
     @Override

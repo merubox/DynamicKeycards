@@ -58,6 +58,14 @@ On top of that:
   location, at any distance; it can mirror the source live (with an optional release
   delay) or latch on and off with each trigger. A transmitter feeds the other end,
   from wiring alone or from wiring *and* a direct click.
+- **Siren** — a rotating warning light, wired to redstone or bound to a reader,
+  transmitter, or advanced sensor. It turns while its input is live and keeps turning
+  for a release delay after; the turn speed and that delay are both adjustable, and
+  it lights the ground around it. Three modes: silent, a flat mechanical tone, or a
+  wailing alarm that carries twice as far.
+- **Cards can be worn** — with Curios or Accessories installed, any card goes in the
+  necklace slot and is drawn on your chest. Right-click a reader empty-handed and the
+  card you have on passes for you.
 - **Maintenance cards** — golden and estate maintenance cards open a device's
   settings and pick it up. They deliberately grant no registration or pass access;
   each swaps 1:1 with its keycard whenever you need the other half.
@@ -68,6 +76,7 @@ On top of that:
 |---|---|
 | **EMI** | The machine processes as recipe categories: Card Registering (blank/keycard → keycard, per color) and Card Duplicating (fork / issue member / co-manager, per color), shown as a left-to-right process with the machine as a hoverable catalyst. |
 | **Jade** | Readers show their owner and register-mode state; duplicators show whether a copy is pending. |
+| **Curios / Accessories** | Cards go in the necklace slot and are drawn on your chest; a card worn there passes a reader on an empty-handed right-click, so you never have to hold it. |
 | **Create** | Standing + wrench right-click on a reader or sensor opens its link screen: two frequency slots let its accept signal transmit wirelessly over a Redstone Link network, **Simultaneous Mode** sends it both wirelessly and over physical redstone at once, and a number display lets you dial in the signal length (holding right-click on it opens a tick/second/minute adjustment scale). Sneak + wrench picks the device up straight into your inventory. |
 
 Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, Nederlands, 中文(简体).
@@ -100,6 +109,7 @@ Localized in **7 languages**: English, 한국어, 日本語, Deutsch, Español, 
 | 0.1.6 | Sensor-to-sensor binding, connections survive Create schematics/contraptions, quieter connection sounds |
 | 0.1.7 | Readers can link to more than one other reader, linking requires register mode, link cleanup on break, interruptible register mode, customizable detection range for advanced sensors |
 | 0.1.8 | Transmitter & Receiver, maintenance cards, DK chip, device links stored by identity so they survive schematics and moves, mode-name overhaul |
+| 0.1.9 | Siren, wearable cards (Curios / Accessories necklace slot) |
 
 ## Requirements
 

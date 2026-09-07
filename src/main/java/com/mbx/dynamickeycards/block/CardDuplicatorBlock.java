@@ -131,18 +131,8 @@ public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock 
         if (stack.isEmpty()) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
-        // A wrench or either maintenance card, sneaking: picks the duplicator up after a
-        // confirming second click. No owner concept here (never has been) - unlike the reader,
-        // anyone can pick this up, same as the sensors/transmitter/receiver. Standing does
-        // nothing - there's no config UI to open, this block has no settings.
         if (stack.is(Tags.Items.TOOLS_WRENCH) || MaintenanceAccess.isMaintenanceCard(stack)) {
-            if (!(level.getBlockEntity(pos) instanceof CardDuplicatorBlockEntity duplicator)) {
-                return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
-            }
-            if (!player.isShiftKeyDown()) {
-                return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
-            }
-            return wrenchPickup(state, level, pos, player, duplicator);
+            return maintenanceInteract(state, level, pos, player);
         }
         if (player.isSpectator() || !(stack.getItem() instanceof KeycardItem)
                 || !(level.getBlockEntity(pos) instanceof CardDuplicatorBlockEntity duplicator)) {
@@ -153,62 +143,108 @@ public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock 
             return ItemInteractionResult.CONSUME;
         }
         if (!level.isClientSide) {
-            if (stack.getItem() instanceof GoldenKeycardItem) {
-                this.deny(state, level, pos, player, "golden");
-            } else if (stack.getItem() instanceof EstateKeycardItem) {
-                this.deny(state, level, pos, player, "estate");
-            } else if (duplicator.getSourceKeys() == null) {
-                if (stack.getItem() instanceof CrewMemberKeycardItem) {
-                    this.deny(state, level, pos, player, "member_source");
-                } else if (KeycardItem.ownKey(stack) == null) {
-                    this.deny(state, level, pos, player, "blank_source");
-                } else if (stack.getItem() instanceof CrewManagerKeycardItem) {
-                    // the manager is never re-keyed: issued cards must follow its future
-                    // registrations, so the group key stays the manager's own key
-                    duplicator.setSourceKeys(KeycardItem.allKeys(stack), true);
-                    setMode(level, pos, state, DuplicatorMode.ARMED);
-                    level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3f, 0.8f);
-                    DKSounds.arm(level, pos);
-                    message(player, "target_prompt", ChatFormatting.WHITE);
-                } else {
-                    // snapshot fork: freeze the keys both cards will share, then give the
-                    // source a fresh own key so future registrations no longer propagate
-                    duplicator.setSourceKeys(KeycardItem.allKeys(stack));
-                    KeycardItem.rekey(stack);
-                    setMode(level, pos, state, DuplicatorMode.ARMED);
-                    level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3f, 0.8f);
-                    DKSounds.arm(level, pos);
-                    message(player, "target_prompt", ChatFormatting.WHITE);
-                }
-            } else {
-                if (stack.getItem() instanceof CrewManagerKeycardItem && KeycardItem.ownKey(stack) == null) {
-                    // blank manager target → co-manager (source must be a manager)
-                    if (!duplicator.isSourceManager()) {
-                        this.deny(state, level, pos, player, "manager_target");
-                    } else {
-                        // an exact clone of the group key (the manager's own key = last frozen key)
-                        List<UUID> keys = duplicator.getSourceKeys();
-                        stack.set(DKComponents.CARD_ID.get(), keys.get(keys.size() - 1));
-                        this.complete(state, level, pos, player, duplicator);
-                    }
-                } else if (!(stack.getItem() instanceof BlankKeycardItem)) {
-                    this.deny(state, level, pos, player, "not_blank");
-                } else if (duplicator.isSourceManager()) {
-                    // issue crew members: same-color member cards carrying the group keys
-                    ItemStack members = new ItemStack(DKItems.memberCardFor(stack), stack.getCount());
-                    KeycardItem.inheritFrom(members, duplicator.getSourceKeys());
-                    player.setItemInHand(hand, members);
-                    this.complete(state, level, pos, player, duplicator);
-                } else {
-                    // fork copy: a blank card becomes a keyed keycard inheriting the frozen keys
-                    ItemStack keyed = new ItemStack(DKItems.keycardFor(stack), stack.getCount());
-                    KeycardItem.inheritFrom(keyed, duplicator.getSourceKeys());
-                    player.setItemInHand(hand, keyed);
-                    this.complete(state, level, pos, player, duplicator);
-                }
-            }
+            duplicateInteract(stack, state, level, pos, player, hand, duplicator);
         }
         return ItemInteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    /**
+     * A wrench or either maintenance card, sneaking: picks the duplicator up after a
+     * confirming second click. No owner concept here (never has been) - unlike the reader,
+     * anyone can pick this up, same as the sensors/transmitter/receiver. Standing is refused -
+     * there's no config UI to open, this block has no settings.
+     */
+    private ItemInteractionResult maintenanceInteract(BlockState state, Level level, BlockPos pos, Player player) {
+        if (!(level.getBlockEntity(pos) instanceof CardDuplicatorBlockEntity duplicator)) {
+            return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        }
+        if (!player.isShiftKeyDown()) {
+            // refused rather than passed on to the empty-hand path: that path cancels a pending
+            // source, so simply holding a wrench and right-clicking used to throw away the card
+            // already presented. A pending source survives this flash - see tick().
+            if (!level.isClientSide) {
+                deny(state, level, pos, player, "not_keycard");
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+        return wrenchPickup(state, level, pos, player, duplicator);
+    }
+
+    /**
+     * The duplication itself, server-side. Which of the two stages runs is decided by whether a
+     * source has been taken yet ({@link CardDuplicatorBlockEntity#getSourceKeys}): first a card is
+     * presented to freeze the keys to copy, then a second card receives them.
+     */
+    /**
+     * The duplication itself, server-side. Which of the two stages runs is decided by whether a
+     * source has been taken yet ({@link CardDuplicatorBlockEntity#getSourceKeys}): first a card is
+     * presented to freeze the keys to copy, then a second card receives them.
+     */
+    private void duplicateInteract(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                   Player player, InteractionHand hand, CardDuplicatorBlockEntity duplicator) {
+        // neither master key is copyable at all, at either stage
+        if (stack.getItem() instanceof GoldenKeycardItem) {
+            this.deny(state, level, pos, player, "golden");
+        } else if (stack.getItem() instanceof EstateKeycardItem) {
+            this.deny(state, level, pos, player, "estate");
+        } else if (duplicator.getSourceKeys() == null) {
+            takeSource(stack, state, level, pos, player, duplicator);
+        } else {
+            applyToTarget(stack, state, level, pos, player, hand, duplicator);
+        }
+    }
+
+    /**
+     * First stage: freeze what the presented card can open, so the next card can inherit it.
+     * Rejects anything that has nothing to copy - a member card (managed only through its
+     * manager) or a card with no key of its own.
+     */
+    private void takeSource(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                            Player player, CardDuplicatorBlockEntity duplicator) {
+        if (stack.getItem() instanceof CrewMemberKeycardItem) {
+            this.deny(state, level, pos, player, "member_source");
+        } else if (KeycardItem.ownKey(stack) == null) {
+            this.deny(state, level, pos, player, "blank_source");
+        } else if (stack.getItem() instanceof CrewManagerKeycardItem) {
+            // the manager is never re-keyed: issued cards must follow its future
+            // registrations, so the group key stays the manager's own key
+            duplicator.setSourceKeys(KeycardItem.allKeys(stack), true);
+            armForTarget(state, level, pos, player);
+        } else {
+            // snapshot fork: freeze the keys both cards will share, then give the
+            // source a fresh own key so future registrations no longer propagate
+            duplicator.setSourceKeys(KeycardItem.allKeys(stack));
+            KeycardItem.rekey(stack);
+            armForTarget(state, level, pos, player);
+        }
+    }
+
+    /**
+     * Second stage: hand the frozen keys to the presented card. What it becomes depends on the
+     * card and on whether the source was a manager - a co-manager, a batch of members, or a
+     * plain fork copy.
+     */
+    private void applyToTarget(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                               Player player, InteractionHand hand, CardDuplicatorBlockEntity duplicator) {
+        if (stack.getItem() instanceof CrewManagerKeycardItem && KeycardItem.ownKey(stack) == null) {
+            // blank manager target -> co-manager (source must be a manager)
+            if (!duplicator.isSourceManager()) {
+                this.deny(state, level, pos, player, "manager_target");
+            } else {
+                // an exact clone of the group key (the manager's own key = last frozen key)
+                List<UUID> keys = duplicator.getSourceKeys();
+                stack.set(DKComponents.CARD_ID.get(), keys.get(keys.size() - 1));
+                this.complete(state, level, pos, player, duplicator);
+            }
+        } else if (!(stack.getItem() instanceof BlankKeycardItem)) {
+            this.deny(state, level, pos, player, "not_blank");
+        } else if (duplicator.isSourceManager()) {
+            // issue crew members: same-color member cards carrying the group keys
+            issue(DKItems.memberCardFor(stack), stack, state, level, pos, player, hand, duplicator);
+        } else {
+            // fork copy: a blank card becomes a keyed keycard inheriting the frozen keys
+            issue(DKItems.keycardFor(stack), stack, state, level, pos, player, hand, duplicator);
+        }
     }
 
     private void complete(BlockState state, Level level, BlockPos pos, Player player, CardDuplicatorBlockEntity duplicator) {
@@ -243,6 +279,31 @@ public class CardDuplicatorBlock extends FaceAttachedHorizontalDirectionalBlock 
     @Override
     public PushReaction getPistonPushReaction(BlockState state) {
         return PushReaction.DESTROY;
+    }
+
+    /**
+     * The tail both source paths share: light up, sound, and prompt for the target card. Only the
+     * freezing above it differs - a manager keeps its own key as the group key, a plain card is
+     * re-keyed so later registrations stop propagating to the copy.
+     */
+    private void armForTarget(BlockState state, Level level, BlockPos pos, Player player) {
+        setMode(level, pos, state, DuplicatorMode.ARMED);
+        level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3f, 0.8f);
+        DKSounds.arm(level, pos);
+        message(player, "target_prompt", ChatFormatting.WHITE);
+    }
+
+    /**
+     * Replaces the blank card in hand with {@code type}, carrying the frozen keys - the whole of
+     * both successful target paths, which differ only in which card type they hand back. The stack
+     * count carries over, so a full stack of blanks is converted in one go.
+     */
+    private void issue(Item type, ItemStack blank, BlockState state, Level level, BlockPos pos,
+                       Player player, InteractionHand hand, CardDuplicatorBlockEntity duplicator) {
+        ItemStack issued = new ItemStack(type, blank.getCount());
+        KeycardItem.inheritFrom(issued, duplicator.getSourceKeys());
+        player.setItemInHand(hand, issued);
+        this.complete(state, level, pos, player, duplicator);
     }
 
     private static void setMode(Level level, BlockPos pos, BlockState state, DuplicatorMode mode) {

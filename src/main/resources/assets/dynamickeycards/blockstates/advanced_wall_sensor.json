@@ -1,12 +1,412 @@
 {
   "variants": {
-    "present=false,facing=north": { "model": "dynamickeycards:block/sensor/empty_wall" },
-    "present=false,facing=east": { "model": "dynamickeycards:block/sensor/empty_wall" },
-    "present=false,facing=south": { "model": "dynamickeycards:block/sensor/empty_wall" },
-    "present=false,facing=west": { "model": "dynamickeycards:block/sensor/empty_wall" },
-    "present=true,facing=north": { "model": "dynamickeycards:block/sensor/empty_wall" },
-    "present=true,facing=east": { "model": "dynamickeycards:block/sensor/empty_wall" },
-    "present=true,facing=south": { "model": "dynamickeycards:block/sensor/empty_wall" },
-    "present=true,facing=west": { "model": "dynamickeycards:block/sensor/empty_wall" }
+    "accent=none,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_off_north"
+    },
+    "accent=none,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_off_south"
+    },
+    "accent=none,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_off_east"
+    },
+    "accent=none,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_off_west"
+    },
+    "accent=none,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_on_north"
+    },
+    "accent=none,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_on_south"
+    },
+    "accent=none,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_on_east"
+    },
+    "accent=none,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_on_west"
+    },
+    "accent=white,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_white_off_north"
+    },
+    "accent=white,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_white_off_south"
+    },
+    "accent=white,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_white_off_east"
+    },
+    "accent=white,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_white_off_west"
+    },
+    "accent=white,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_white_on_north"
+    },
+    "accent=white,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_white_on_south"
+    },
+    "accent=white,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_white_on_east"
+    },
+    "accent=white,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_white_on_west"
+    },
+    "accent=orange,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_orange_off_north"
+    },
+    "accent=orange,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_orange_off_south"
+    },
+    "accent=orange,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_orange_off_east"
+    },
+    "accent=orange,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_orange_off_west"
+    },
+    "accent=orange,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_orange_on_north"
+    },
+    "accent=orange,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_orange_on_south"
+    },
+    "accent=orange,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_orange_on_east"
+    },
+    "accent=orange,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_orange_on_west"
+    },
+    "accent=magenta,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_magenta_off_north"
+    },
+    "accent=magenta,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_magenta_off_south"
+    },
+    "accent=magenta,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_magenta_off_east"
+    },
+    "accent=magenta,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_magenta_off_west"
+    },
+    "accent=magenta,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_magenta_on_north"
+    },
+    "accent=magenta,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_magenta_on_south"
+    },
+    "accent=magenta,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_magenta_on_east"
+    },
+    "accent=magenta,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_magenta_on_west"
+    },
+    "accent=light_blue,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_blue_off_north"
+    },
+    "accent=light_blue,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_blue_off_south"
+    },
+    "accent=light_blue,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_blue_off_east"
+    },
+    "accent=light_blue,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_blue_off_west"
+    },
+    "accent=light_blue,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_blue_on_north"
+    },
+    "accent=light_blue,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_blue_on_south"
+    },
+    "accent=light_blue,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_blue_on_east"
+    },
+    "accent=light_blue,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_blue_on_west"
+    },
+    "accent=yellow,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_yellow_off_north"
+    },
+    "accent=yellow,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_yellow_off_south"
+    },
+    "accent=yellow,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_yellow_off_east"
+    },
+    "accent=yellow,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_yellow_off_west"
+    },
+    "accent=yellow,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_yellow_on_north"
+    },
+    "accent=yellow,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_yellow_on_south"
+    },
+    "accent=yellow,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_yellow_on_east"
+    },
+    "accent=yellow,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_yellow_on_west"
+    },
+    "accent=lime,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_lime_off_north"
+    },
+    "accent=lime,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_lime_off_south"
+    },
+    "accent=lime,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_lime_off_east"
+    },
+    "accent=lime,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_lime_off_west"
+    },
+    "accent=lime,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_lime_on_north"
+    },
+    "accent=lime,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_lime_on_south"
+    },
+    "accent=lime,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_lime_on_east"
+    },
+    "accent=lime,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_lime_on_west"
+    },
+    "accent=pink,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_pink_off_north"
+    },
+    "accent=pink,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_pink_off_south"
+    },
+    "accent=pink,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_pink_off_east"
+    },
+    "accent=pink,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_pink_off_west"
+    },
+    "accent=pink,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_pink_on_north"
+    },
+    "accent=pink,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_pink_on_south"
+    },
+    "accent=pink,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_pink_on_east"
+    },
+    "accent=pink,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_pink_on_west"
+    },
+    "accent=gray,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_gray_off_north"
+    },
+    "accent=gray,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_gray_off_south"
+    },
+    "accent=gray,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_gray_off_east"
+    },
+    "accent=gray,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_gray_off_west"
+    },
+    "accent=gray,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_gray_on_north"
+    },
+    "accent=gray,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_gray_on_south"
+    },
+    "accent=gray,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_gray_on_east"
+    },
+    "accent=gray,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_gray_on_west"
+    },
+    "accent=light_gray,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_gray_off_north"
+    },
+    "accent=light_gray,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_gray_off_south"
+    },
+    "accent=light_gray,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_gray_off_east"
+    },
+    "accent=light_gray,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_gray_off_west"
+    },
+    "accent=light_gray,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_gray_on_north"
+    },
+    "accent=light_gray,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_gray_on_south"
+    },
+    "accent=light_gray,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_gray_on_east"
+    },
+    "accent=light_gray,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_light_gray_on_west"
+    },
+    "accent=cyan,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_cyan_off_north"
+    },
+    "accent=cyan,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_cyan_off_south"
+    },
+    "accent=cyan,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_cyan_off_east"
+    },
+    "accent=cyan,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_cyan_off_west"
+    },
+    "accent=cyan,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_cyan_on_north"
+    },
+    "accent=cyan,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_cyan_on_south"
+    },
+    "accent=cyan,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_cyan_on_east"
+    },
+    "accent=cyan,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_cyan_on_west"
+    },
+    "accent=purple,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_purple_off_north"
+    },
+    "accent=purple,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_purple_off_south"
+    },
+    "accent=purple,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_purple_off_east"
+    },
+    "accent=purple,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_purple_off_west"
+    },
+    "accent=purple,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_purple_on_north"
+    },
+    "accent=purple,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_purple_on_south"
+    },
+    "accent=purple,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_purple_on_east"
+    },
+    "accent=purple,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_purple_on_west"
+    },
+    "accent=blue,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_blue_off_north"
+    },
+    "accent=blue,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_blue_off_south"
+    },
+    "accent=blue,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_blue_off_east"
+    },
+    "accent=blue,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_blue_off_west"
+    },
+    "accent=blue,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_blue_on_north"
+    },
+    "accent=blue,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_blue_on_south"
+    },
+    "accent=blue,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_blue_on_east"
+    },
+    "accent=blue,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_blue_on_west"
+    },
+    "accent=brown,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_brown_off_north"
+    },
+    "accent=brown,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_brown_off_south"
+    },
+    "accent=brown,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_brown_off_east"
+    },
+    "accent=brown,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_brown_off_west"
+    },
+    "accent=brown,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_brown_on_north"
+    },
+    "accent=brown,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_brown_on_south"
+    },
+    "accent=brown,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_brown_on_east"
+    },
+    "accent=brown,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_brown_on_west"
+    },
+    "accent=green,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_green_off_north"
+    },
+    "accent=green,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_green_off_south"
+    },
+    "accent=green,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_green_off_east"
+    },
+    "accent=green,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_green_off_west"
+    },
+    "accent=green,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_green_on_north"
+    },
+    "accent=green,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_green_on_south"
+    },
+    "accent=green,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_green_on_east"
+    },
+    "accent=green,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_green_on_west"
+    },
+    "accent=red,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_red_off_north"
+    },
+    "accent=red,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_red_off_south"
+    },
+    "accent=red,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_red_off_east"
+    },
+    "accent=red,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_red_off_west"
+    },
+    "accent=red,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_red_on_north"
+    },
+    "accent=red,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_red_on_south"
+    },
+    "accent=red,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_red_on_east"
+    },
+    "accent=red,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_red_on_west"
+    },
+    "accent=black,present=false,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_black_off_north"
+    },
+    "accent=black,present=false,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_black_off_south"
+    },
+    "accent=black,present=false,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_black_off_east"
+    },
+    "accent=black,present=false,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_black_off_west"
+    },
+    "accent=black,present=true,facing=north": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_black_on_north"
+    },
+    "accent=black,present=true,facing=south": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_black_on_south"
+    },
+    "accent=black,present=true,facing=east": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_black_on_east"
+    },
+    "accent=black,present=true,facing=west": {
+      "model": "dynamickeycards:block/sensor/advanced_wall_sensor_black_on_west"
+    }
   }
 }

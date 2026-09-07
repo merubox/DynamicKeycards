@@ -3,7 +3,7 @@ plugins {
     id 'net.neoforged.moddev' version '2.0.78'
 }
 
-version = '0.1.8'
+version = '0.1.9'
 group = 'com.mbx'
 base { archivesName = 'DynamicKeycards' }
 
@@ -42,6 +42,12 @@ dependencies {
     // Ponder/Catnip, compile-only: see the repository comment above — needed only to resolve
     // net.createmod.catnip.data.Couple, referenced by Create's IRedstoneLinkable interface.
     compileOnly 'net.createmod.ponder:ponder-neoforge:1.0.82+mc1.21.1'
+    // Accessory-slot compat (wearing a keycard in the necklace slot): compile against the APIs
+    // only. Both are optional runtime dependencies, each guarded by its own availability class
+    // the way Create is. Two of them because they are separate ecosystems with separate slot
+    // tags - an item opted into one is invisible to the other.
+    compileOnly 'maven.modrinth:curios:9.5.1+1.21.1-neoforge'
+    compileOnly 'maven.modrinth:accessories:1.1.0-beta.53+1.21.1-neoforge'
 }
 
 neoForge {

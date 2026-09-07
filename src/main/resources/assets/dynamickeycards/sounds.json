@@ -1,0 +1,20 @@
+{
+  "siren_caution": {
+    "subtitle": "dynamickeycards.subtitle.siren_caution",
+    "sounds": [
+      {
+        "name": "minecraft:note/bit",
+        "attenuation_distance": 64
+      }
+    ]
+  },
+  "siren_emergency": {
+    "subtitle": "dynamickeycards.subtitle.siren_emergency",
+    "sounds": [
+      {
+        "name": "minecraft:note/flute",
+        "attenuation_distance": 64
+      }
+    ]
+  }
+}

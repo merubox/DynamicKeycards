@@ -3,6 +3,7 @@ package com.mbx.dynamickeycards.registry;
 import com.mbx.dynamickeycards.DynamicKeycards;
 import com.mbx.dynamickeycards.menu.LinkDeviceMenu;
 import com.mbx.dynamickeycards.menu.ReceiverMenu;
+import com.mbx.dynamickeycards.menu.SirenMenu;
 import com.mbx.dynamickeycards.menu.TransmitterMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
@@ -31,4 +32,8 @@ public class DKMenuTypes {
     /** Same as {@link #TRANSMITTER}, for the receiver. */
     public static final Supplier<MenuType<ReceiverMenu>> RECEIVER =
             MENU_TYPES.register("receiver", () -> IMenuTypeExtension.create(ReceiverMenu::fromNetwork));
+
+    /** Same again for the siren - three sound tiers plus two durations, see {@code menu.SirenMenu}. */
+    public static final Supplier<MenuType<SirenMenu>> SIREN =
+            MENU_TYPES.register("siren", () -> IMenuTypeExtension.create(SirenMenu::fromNetwork));
 }

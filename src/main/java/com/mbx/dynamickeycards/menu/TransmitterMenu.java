@@ -28,20 +28,13 @@ public class TransmitterMenu extends AbstractDeviceModeMenu<TransmitterBlockEnti
                 () -> getDevice().setMode(TransmitterMode.MIXED));
     }
 
+    /** Just the manual trigger's duration, whose default is the vanilla stone-button one. */
     @Override
-    protected int durationTicks() {
-        return getDevice().getManualTriggerTicks();
-    }
-
-    @Override
-    protected void setDurationTicks(int ticks) {
-        getDevice().setManualTriggerTicks(ticks);
-    }
-
-    /** Back to the vanilla stone-button default. */
-    @Override
-    protected void resetDurationTicks() {
-        getDevice().resetManualTriggerTicks();
+    protected List<DurationSetting> durations() {
+        return List.of(new DurationSetting(
+                () -> getDevice().getManualTriggerTicks(),
+                ticks -> getDevice().setManualTriggerTicks(ticks),
+                () -> getDevice().resetManualTriggerTicks()));
     }
 
     public static TransmitterMenu fromNetwork(int containerId, Inventory playerInventory, RegistryFriendlyByteBuf extraData) {

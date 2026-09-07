@@ -3,7 +3,7 @@ package com.mbx.dynamickeycards.block;
 import com.mbx.dynamickeycards.DKNetwork;
 
 import com.mbx.dynamickeycards.DKSounds;
-import com.mbx.dynamickeycards.item.ReceiverBlockItem;
+import com.mbx.dynamickeycards.item.SourceBindableItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -50,8 +50,8 @@ public interface SignalSource {
     }
 
     /**
-     * Shared held-item handling for a still-unplaced {@link ReceiverBlockItem} right-clicking
-     * {@code source} - binds it (see {@code ReceiverBlockItem#bindTo}) and announces it, same
+     * Shared held-item handling for a still-unplaced {@link SourceBindableItem} (a receiver or a
+     * siren) right-clicking {@code source} - binds it and announces it, same
      * white "tuned" convention {@code BoundSensorBlockItem}/{@code LinkedReaderBlockItem} binding
      * already uses. {@code null} if {@code stack} isn't one, the same "not applicable" convention
      * used throughout this mod's item-interaction dispatch. Callers that need to gate this behind
@@ -69,7 +69,7 @@ public interface SignalSource {
      */
     @Nullable
     static ItemInteractionResult tryBindReceiverItem(ItemStack stack, Level level, BlockPos pos, Player player, SignalSource source) {
-        if (!(stack.getItem() instanceof ReceiverBlockItem receiverItem)) {
+        if (!(stack.getItem() instanceof SourceBindableItem bindableItem)) {
             return null;
         }
         if (source instanceof AdvancedSensorBlockEntity advanced && advanced.getBoundReader() != null) {
@@ -84,7 +84,7 @@ public interface SignalSource {
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
         if (!level.isClientSide) {
-            receiverItem.bindTo(stack, source.getDeviceId());
+            bindableItem.bindTo(stack, source.getDeviceId());
             // forces the held-item resync immediately - see CardReaderBlock's sensor-bind case
             // for why this matters (otherwise the bind-target highlight can miss the moment of
             // binding, only catching up on the next automatic per-tick sync or a reconnect)

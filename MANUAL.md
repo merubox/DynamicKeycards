@@ -2,7 +2,7 @@
 
 [한국어 버전 (Korean version)](MANUAL_KO.md)
 
-For version 0.1.8. Every interaction is a **right-click**; "sneak" means holding Shift.
+For version 0.1.9. Every interaction is a **right-click**; "sneak" means holding Shift.
 
 ---
 
@@ -84,10 +84,19 @@ for as long as they're linked to one.
   keycard ↔ estate maintenance card). **The binding survives the swap**, so an estate card
   already bound to you is still yours after switching tiers.
 
+### Wearing a card
+With **Curios** or **Accessories** installed, cards go in the **necklace** slot — every
+keycard, blank card, manager card and member card, and the golden and estate keycards too.
+A worn card is drawn on your chest in its own color.
+
+Walking up to a reader and right-clicking it **standing and empty-handed** passes with the
+card you have on, so you never have to hold it. Everything else — registering, removing,
+resetting — still wants the card in your hand.
+
 ### DK Chip (crafting material)
 A component used across the mod's devices. It has no behavior of its own; it goes into the
-five card readers, the sensors, the transmitter, the receiver, and the estate keycard
-(see §6).
+five card readers, the sensors, the transmitter, the receiver, the siren, and the estate
+keycard (see §7).
 
 ---
 
@@ -102,7 +111,7 @@ Placeable on floors, walls, and ceilings.
 - Once the owner **registers** a card, that card operates the reader.
 - Using a registered card (standing) emits a **brief redstone signal** (strength 15,
   strongly powering the mounting face). The default length is 3 seconds, configurable
-  via `defaultPulseLengthTicks` (see §9).
+  via `defaultPulseLengthTicks` (see §10).
 - One card can be registered on many readers, and one reader can hold many cards.
 - Forked cards are managed **individually**: removing one card's registration only
   stops that card — related copies keep working.
@@ -269,7 +278,7 @@ ceiling block and is fully symmetric (no facing).
   reader's signal does.
 - **Release delay**: configurable per sensor, how long the signal keeps going after
   the last detection (0 ticks cuts it the instant nothing's left). Same adjustment
-  screen as a reader's signal length — see the Create notes in §7.
+  screen as a reader's signal length — see the Create notes in §8.
 - **No ownership** — anyone can configure or pick one up.
 - Breaking a sensor loses its configuration (range, release delay, and, for the
   advanced tier, its binding and color too).
@@ -399,7 +408,52 @@ maintenance card works.
 
 ---
 
-## 6. Recipes
+## 6. Siren
+
+A **Siren** is a rotating warning light. It turns for as long as a redstone signal reaches
+it, or for as long as a device it was bound to is running — either input is enough by
+itself.
+
+### Basics
+- **It has no owner.** Like the transmitter and receiver it carries no lock of its own; a
+  siren bound to a **reader** inherits that reader's lock (see the maintenance-tier table
+  in §1).
+- **Binding happens before placement**, exactly as with a receiver: hold an unplaced siren
+  and right-click a card reader, a transmitter, or an advanced sensor. Binding to a reader
+  requires that reader to be in **register mode**. Binding is optional — a siren wired to
+  plain redstone needs none of it.
+- It lights the ground around it while it turns.
+- It mounts on floors, walls and ceilings.
+
+### Modes
+| Mode | Behavior |
+|---|---|
+| **Mute** | Light only — it turns in silence |
+| **Caution** | A flat mechanical tone alongside the light, held unbroken for as long as it turns |
+| **Emergency** | A wail alongside the light, climbing and falling away once every two seconds. Carries twice as far as caution |
+
+The light itself is identical in all three, so a muted siren is still a working warning
+light.
+
+### Turn speed and release delay
+| Setting | Range |
+|---|---|
+| **Turn Speed** | 4 to 60 ticks per revolution (0.2 to 3 seconds), in steps of 4 |
+| **Release Delay** | How long it keeps turning after both its inputs drop; 0 stops it immediately |
+
+Both sit on the number fields in the config screen. Holding right-click on one opens the
+same adjustment scale a reader's signal length uses; the reset button restores both.
+
+A siren that stops holds the position it stopped in, and picks up from there when it starts
+again.
+
+### Opening the config screen / picking up
+**Standing + wrench or maintenance card** opens the config screen; **sneaking + either**
+picks it up after a confirming second click.
+
+---
+
+## 7. Recipes
 
 ### DK Chip
 (empty) – copper ingot – (empty) / gold ingot – redstone – quartz / iron nugget ×3
@@ -419,6 +473,9 @@ Middle and bottom rows are shared: **redstone – DK chip – redstone / iron in
 
 The **Obsidian** reader has its own recipe, independent of the shared pattern above:
 gold ingot – hopper – gold ingot / redstone – DK chip – redstone / obsidian ×3.
+
+### Siren
+(empty) – red stained glass – (empty) / red stained glass – redstone lamp – red stained glass / iron ingot – DK chip – iron ingot
 
 ### Transmitter / Receiver
 - **Transmitter**: (empty) – lightning rod – (empty) / gold ingot – DK chip – gold ingot / (empty) – paper – (empty)
@@ -450,9 +507,10 @@ preserved across the swap.**
 
 ---
 
-## 7. Compatibility notes
-- Readers and duplicators can't be picked up by sneak-click carrying mods
-  (e.g. Carry On).
+## 8. Compatibility notes
+- None of this mod's blocks can be picked up by sneak-click carrying mods
+  (e.g. Carry On) — readers, duplicators, sensors, transmitters, receivers and sirens
+  alike.
 - Metal ingredients use common tags (`c:ingots/iron`, etc.), so equivalent materials
   from other mods work in the recipes.
 - With **Jade** installed, looking at a reader shows its owner and whether register
@@ -486,7 +544,7 @@ preserved across the swap.**
 
 ---
 
-## 8. Recipe viewer (EMI)
+## 9. Recipe viewer (EMI)
 If [EMI](https://modrinth.com/mod/emi) is installed, the card **machines** show up in
 its recipe browser — because registering and duplicating happen through block
 interaction, not a crafting grid, they get their own categories:
@@ -509,13 +567,13 @@ recipes (and back, via recipe-tree lookups on the cards).
 
 ---
 
-## 9. Config & commands
+## 10. Config & commands
 
 **Config** (`config/dynamickeycards-common.toml`):
 - `maxRegistrationsPerReader` (default 128) — per-reader registration cap.
 - `defaultPulseLengthTicks` (default 60 = 3 seconds) — the accept-signal length used by
   a reader that hasn't had its own set. Per-reader signal lengths can be set directly
-  from a reader's link screen (see §7's Create notes).
+  from a reader's link screen (see §8's Create notes).
 
 **Command:**
 - `/dynamickeycards transfer <player>` — while looking at one of your readers, hands

@@ -42,12 +42,8 @@ public class TransmitterScreen extends AbstractDeviceModeScreen<TransmitterMenu>
     }
 
     @Override
-    protected String durationKey() {
-        return "manual_trigger_ticks";
-    }
-
-    @Override
-    protected int durationTicks() {
-        return menu.getDevice().getManualTriggerTicks();
+    protected List<DurationSpec> durations() {
+        return List.of(DurationSpec.inButtonRow("manual_trigger_ticks",
+                () -> menu.getDevice().getManualTriggerTicks()));
     }
 }

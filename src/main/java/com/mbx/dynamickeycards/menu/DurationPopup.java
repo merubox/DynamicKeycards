@@ -15,7 +15,9 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.List;
 import java.util.function.IntConsumer;
+import java.util.function.IntFunction;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
@@ -25,18 +27,19 @@ import java.util.function.Supplier;
  * delay ({@link ReceiverScreen}), and the transmitter's manual-trigger duration
  * ({@link TransmitterScreen}).
  *
- * <p>Three rows - ticks, seconds, minutes - each a bar of {@link #MAX_VALUE}+1 columns with a
- * milestone tick every {@link #MILESTONE_INTERVAL}. The mouse picks a row and column by proximity
- * ({@link #updateHoverFromMouse}); holding shift snaps to milestones only. Releasing right-click
- * commits {@code column * } the row's multiplier as the new tick value.
+ * <p>The rows are the picker's {@link Scale}: usually {@link #TICKS_SECONDS_MINUTES}, three rows
+ * each a bar of columns with a milestone tick every {@link Scale#milestoneInterval}. The mouse
+ * picks a row and column by proximity ({@link #updateHoverFromMouse}); holding shift snaps to
+ * milestones only. Releasing right-click commits {@code column *} the row's
+ * {@link Row#ticksPerColumn} as the new tick value.
  *
  * <p>Opening it warps the cursor onto the column matching the current value, so the picker starts
  * under the pointer rather than making the player hunt for where they already are.
  *
  * <p>The owning screen keeps the trigger box (the small number readout that is held to open this)
  * and routes its mouse/tick callbacks here; everything from {@link #open()} onward lives in this
- * class. Only three things vary per screen, all constructor arguments: where the current value is
- * read from, where a committed value is sent, and the heading to draw.
+ * class. Only four things vary per box, all constructor arguments: where the current value is
+ * read from, where a committed value is sent, the heading to draw, and the scale.
  */
 class DurationPopup {
 
@@ -53,14 +56,37 @@ class DurationPopup {
      */
     private static final Holder.Reference<SoundEvent> SCROLL_SOUND = SoundEvents.NOTE_BLOCK_HAT;
 
-    private static final int MAX_VALUE = 60;
-    private static final int MILESTONE_INTERVAL = 10;
+    /**
+     * One row of the picker: the lang-key suffix naming it, what a single column is worth in
+     * ticks, and how a column reads in the cursor label.
+     */
+    record Row(String key, int ticksPerColumn, IntFunction<String> format) {
+    }
+
+    /**
+     * Which rows a picker offers and the span of columns they share. Finest row first, so
+     * {@link #seedHoverFromTicks} can prefer the finest one that expresses a value exactly.
+     *
+     * <p>{@code minColumn} is usually 0; a setting with no meaningful zero (the siren's turn
+     * speed, which always turns) raises it, leaving the columns below it drawn but unreachable.
+     * {@code columnStep} is usually 1; raising it makes the cursor skip the columns in between,
+     * for a setting that only accepts multiples of something (again the siren, whose eight frames
+     * have to divide its period evenly). It doesn't change the ruler - the bar and its milestones
+     * are drawn the same either way - so shift-snapping to a milestone the step can't reach lands
+     * on the nearest column that it can.
+     */
+    record Scale(List<Row> rows, int minColumn, int maxColumn, int milestoneInterval, int columnStep) {
+    }
+
+    /** Ticks / seconds / minutes, 0-60 each - every duration setting but the siren's turn speed. */
+    static final Scale TICKS_SECONDS_MINUTES = new Scale(List.of(
+            new Row("ticks", 1, value -> value + "t"),
+            new Row("seconds", 20, value -> "0:" + (value < 10 ? "0" : "") + value),
+            new Row("minutes", 1200, value -> value + ":00")), 0, 60, 10, 1);
+
     private static final int BAR_SCALE = 2;
     private static final int MILESTONE_SIZE = 4;
     private static final int ROW_HEIGHT = 11;
-    /** Ticks per unit on each row, parallel to {@link #ROW_KEYS}. */
-    private static final int[] ROW_MULTIPLIER = {1, 20, 1200};
-    private static final String[] ROW_KEYS = {"ticks", "seconds", "minutes"};
     /** Hard ceiling on a committed value - 72000 ticks = one hour. */
     private static final int MAX_TICKS = 72000;
     /** Z plane for the overlay, so it covers the item icons the screens draw at their own raised Z. */
@@ -95,6 +121,7 @@ class DurationPopup {
     private final IntSupplier currentTicks;
     private final IntConsumer commitTicks;
     private final Supplier<Component> title;
+    private final Scale scale;
 
     private boolean open;
     private int labelWidth;
@@ -113,11 +140,13 @@ class DurationPopup {
     /** At-most-one-sound-per-tick guard, so a fast drag across columns doesn't machine-gun the sound. */
     private int soundCooldown;
 
-    DurationPopup(Screen screen, IntSupplier currentTicks, IntConsumer commitTicks, Supplier<Component> title) {
+    DurationPopup(Screen screen, IntSupplier currentTicks, IntConsumer commitTicks,
+                  Supplier<Component> title, Scale scale) {
         this.screen = screen;
         this.currentTicks = currentTicks;
         this.commitTicks = commitTicks;
         this.title = title;
+        this.scale = scale;
     }
 
     boolean isOpen() {
@@ -147,12 +176,12 @@ class DurationPopup {
         seedHoverFromTicks(currentTicks.getAsInt());
 
         labelWidth = 0;
-        for (String key : ROW_KEYS) {
-            labelWidth = Math.max(labelWidth, font().width(rowLabel(key)));
+        for (Row row : scale.rows()) {
+            labelWidth = Math.max(labelWidth, font().width(rowLabel(row)));
         }
-        milestoneCount = MAX_VALUE / MILESTONE_INTERVAL + 1;
-        valueBarWidth = (MAX_VALUE + 1) * BAR_SCALE + 1 + milestoneCount * MILESTONE_SIZE;
-        rowsHeight = ROW_KEYS.length * ROW_HEIGHT;
+        milestoneCount = scale.maxColumn() / scale.milestoneInterval() + 1;
+        valueBarWidth = (scale.maxColumn() + 1) * BAR_SCALE + 1 + milestoneCount * MILESTONE_SIZE;
+        rowsHeight = scale.rows().size() * ROW_HEIGHT;
 
         boxW = labelWidth + 14 + valueBarWidth + 10;
         // 17px above the rows (title) + 16px below (hint) - same proportions as the reference
@@ -168,38 +197,46 @@ class DurationPopup {
         warpCursorToValue(hoverRow, hoverValue);
     }
 
-    /** Picks the coarsest row that can express {@code ticks} without going off the end of the bar. */
+    /**
+     * Opens on the row the value actually belongs to: the finest one that expresses {@code ticks}
+     * exactly and still fits on the bar, so 40 ticks lands on the tick row at 40 rather than the
+     * second row at 2. A value no row can express exactly (only reachable from hand-edited NBT)
+     * falls back to the finest row it fits on at all, clamped.
+     */
     private void seedHoverFromTicks(int ticks) {
-        int row = 0;
-        int value = ticks;
-        if (ticks > 60 * 20) {
-            row = 2;
-            value = ticks / (60 * 20);
-        } else if (ticks > 60) {
-            row = 1;
-            value = ticks / 20;
+        int fallbackRow = scale.rows().size() - 1;
+        for (int row = 0; row < scale.rows().size(); row++) {
+            int column = ticks / scale.rows().get(row).ticksPerColumn();
+            if (column > scale.maxColumn()) {
+                continue;
+            }
+            fallbackRow = Math.min(fallbackRow, row);
+            if (ticks % scale.rows().get(row).ticksPerColumn() == 0) {
+                hoverRow = row;
+                hoverValue = clampColumn(column);
+                return;
+            }
         }
-        hoverRow = row;
-        hoverValue = Mth.clamp(value, 0, MAX_VALUE);
+        hoverRow = fallbackRow;
+        hoverValue = clampColumn(ticks / scale.rows().get(fallbackRow).ticksPerColumn());
     }
 
-    private Component rowLabel(String key) {
-        return Component.translatable("dynamickeycards.link_device.signal_length." + key);
+    /** Snaps to the nearest reachable column, then into range - see {@link Scale#columnStep}. */
+    private int clampColumn(int column) {
+        int step = scale.columnStep();
+        int snapped = Math.round(column / (float) step) * step;
+        return Mth.clamp(snapped, scale.minColumn(), scale.maxColumn());
     }
 
-    private static String formatValue(int row, int value) {
-        return switch (row) {
-            case 0 -> value + "t";
-            case 1 -> "0:" + (value < 10 ? "0" : "") + value;
-            default -> value + ":00";
-        };
+    private Component rowLabel(Row row) {
+        return Component.translatable("dynamickeycards.link_device.signal_length." + row.key());
     }
 
     /** X coordinate (absolute screen space) of a given column along the currently open bar. */
     private double coordX(int column) {
-        int milestonesPassed = (Math.max(1, column) - 1) / MILESTONE_INTERVAL;
+        int milestonesPassed = (Math.max(1, column) - 1) / scale.milestoneInterval();
         double xOut = milestonesPassed * MILESTONE_SIZE + column * BAR_SCALE + 1.5;
-        if (column % MILESTONE_INTERVAL == 0) {
+        if (column % scale.milestoneInterval() == 0) {
             xOut += MILESTONE_SIZE / 2.0;
         }
         if (column > 0) {
@@ -224,22 +261,23 @@ class DurationPopup {
     private void updateHoverFromMouse(double mouseX, double mouseY) {
         boolean milestonesOnly = Screen.hasShiftDown();
 
+        int rowCount = scale.rows().size();
         int row = 0;
         double bestDiff = Double.MAX_VALUE;
-        for (; row < ROW_KEYS.length; row++) {
+        for (; row < rowCount; row++) {
             double diff = Math.abs(coordY(row) - mouseY);
             if (bestDiff < diff) {
                 break;
             }
             bestDiff = diff;
         }
-        row = Mth.clamp(row - 1, 0, ROW_KEYS.length - 1);
+        row = Mth.clamp(row - 1, 0, rowCount - 1);
 
         int column = 0;
         bestDiff = Double.MAX_VALUE;
-        for (; column <= MAX_VALUE; column++) {
-            int probe = milestonesOnly ? column * MILESTONE_INTERVAL : column;
-            if (probe > MAX_VALUE) {
+        for (; column <= scale.maxColumn(); column++) {
+            int probe = milestonesOnly ? column * scale.milestoneInterval() : column;
+            if (probe > scale.maxColumn()) {
                 break;
             }
             double diff = Math.abs(coordX(probe) - mouseX);
@@ -249,8 +287,7 @@ class DurationPopup {
             bestDiff = diff;
         }
         column -= 1;
-        int value = milestonesOnly ? column * MILESTONE_INTERVAL : column;
-        value = Mth.clamp(value, 0, MAX_VALUE);
+        int value = clampColumn(milestonesOnly ? column * scale.milestoneInterval() : column);
         if (row != hoverRow || value != hoverValue) {
             hoverRow = row;
             hoverValue = value;
@@ -263,14 +300,14 @@ class DurationPopup {
         if (soundCooldown > 0) {
             return;
         }
-        float pitch = Mth.lerp(hoverValue / (float) MAX_VALUE, 1.15f, 1.5f);
+        float pitch = Mth.lerp(hoverValue / (float) scale.maxColumn(), 1.15f, 1.5f);
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SCROLL_SOUND.value(), pitch, 0.25f));
         soundCooldown = 1;
     }
 
     private void confirmAndClose() {
-        // 0 is a legitimate choice (shown as "0t") - not floored up to 1
-        int ticks = Mth.clamp(hoverValue * ROW_MULTIPLIER[hoverRow], 0, MAX_TICKS);
+        // 0 is a legitimate choice on most scales (shown as "0t") - not floored up to 1
+        int ticks = Mth.clamp(hoverValue * scale.rows().get(hoverRow).ticksPerColumn(), 0, MAX_TICKS);
         commitTicks.accept(ticks);
         open = false;
     }
@@ -303,9 +340,9 @@ class DurationPopup {
         if (!open) {
             return false;
         }
-        int step = Screen.hasShiftDown() ? MILESTONE_INTERVAL : 1;
+        int step = Screen.hasShiftDown() ? scale.milestoneInterval() : scale.columnStep();
         int delta = (int) Math.signum(scrollY) * step;
-        int newValue = Mth.clamp(hoverValue + delta, 0, MAX_VALUE);
+        int newValue = clampColumn(hoverValue + delta);
         if (newValue != hoverValue) {
             hoverValue = newValue;
             warpCursorToValue(hoverRow, hoverValue);
@@ -342,7 +379,7 @@ class DurationPopup {
         renderFrame(graphics, barFrameX, rowsY - 3, valueBarWidth + 8, rowsHeight + 5);
         blitStretched(graphics, barFrameX + 3, rowsY, valueBarWidth + 2, rowsHeight - 1, TEX_BAR_BG);
 
-        for (int row = 0; row < ROW_KEYS.length; row++) {
+        for (int row = 0; row < scale.rows().size(); row++) {
             int rowY = rowsY + row * ROW_HEIGHT;
             boolean selected = row == hoverRow;
 
@@ -356,7 +393,7 @@ class DurationPopup {
                 blitCropped(graphics, valueBarX + w, rowY + 1, segW, 8, barTex);
             }
 
-            graphics.drawString(font, rowLabel(ROW_KEYS[row]),
+            graphics.drawString(font, rowLabel(scale.rows().get(row)),
                     selected ? popupX + 3 : popupX, rowY + 1,
                     selected ? 0xF0F0F4 : 0x7A7A80, false);
 
@@ -364,13 +401,13 @@ class DurationPopup {
             int milestoneX = valueBarX;
             for (int m = 0; m < milestoneCount; m++) {
                 blitNative(graphics, milestoneX, rowY + 1, milestoneTex);
-                milestoneX += MILESTONE_SIZE + MILESTONE_INTERVAL * BAR_SCALE;
+                milestoneX += MILESTONE_SIZE + scale.milestoneInterval() * BAR_SCALE;
             }
         }
 
         renderFrame(graphics, popupX - 7, rowsY - 3, labelWidth + 14, rowsHeight + 5);
 
-        String cursorText = formatValue(hoverRow, hoverValue);
+        String cursorText = scale.rows().get(hoverRow).format().apply(hoverValue);
         int cursorWidth = (font.width(cursorText) / 2) * 2 + 3;
         int cursorX = (int) coordX(hoverValue) - cursorWidth / 2;
         int cursorY = (int) coordY(hoverRow) - 7;

@@ -1,0 +1,196 @@
+{
+ "parent": "block/block",
+ "render_type": "translucent",
+ "textures": {
+  "siren": "dynamickeycards:block/siren/siren",
+  "particle": "dynamickeycards:block/siren/siren"
+ },
+ "elements": [
+  {
+   "from": [
+    5,
+    0.0,
+    5
+   ],
+   "to": [
+    11,
+    2.0,
+    11
+   ],
+   "faces": {
+    "north": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      6,
+      6,
+      8
+     ]
+    },
+    "south": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      6,
+      6,
+      8
+     ]
+    },
+    "east": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      6,
+      6,
+      8
+     ]
+    },
+    "west": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      6,
+      6,
+      8
+     ]
+    },
+    "up": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      0,
+      6,
+      6
+     ]
+    },
+    "down": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      8,
+      1,
+      9
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    6,
+    2.0,
+    6
+   ],
+   "to": [
+    10,
+    6.0,
+    10
+   ],
+   "faces": {
+    "north": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      4,
+      10,
+      8
+     ]
+    },
+    "south": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      4,
+      10,
+      8
+     ]
+    },
+    "east": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      4,
+      10,
+      8
+     ]
+    },
+    "west": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      4,
+      10,
+      8
+     ]
+    },
+    "up": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      0,
+      10,
+      4
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7,
+    6.0,
+    7
+   ],
+   "to": [
+    9,
+    7.0,
+    9
+   ],
+   "faces": {
+    "north": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      2,
+      12,
+      3
+     ]
+    },
+    "south": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      2,
+      12,
+      3
+     ]
+    },
+    "east": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      2,
+      12,
+      3
+     ]
+    },
+    "west": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      2,
+      12,
+      3
+     ]
+    },
+    "up": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      0,
+      12,
+      2
+     ]
+    }
+   }
+  }
+ ]
+}

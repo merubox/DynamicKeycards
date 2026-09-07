@@ -7,12 +7,14 @@ import com.mbx.dynamickeycards.block.CardDuplicatorBlock;
 import com.mbx.dynamickeycards.block.CardReaderBlock;
 import com.mbx.dynamickeycards.block.CeilingSensorBlock;
 import com.mbx.dynamickeycards.block.ReceiverBlock;
+import com.mbx.dynamickeycards.block.SirenBlock;
 import com.mbx.dynamickeycards.block.TransmitterBlock;
 import com.mbx.dynamickeycards.block.WallSensorBlock;
 import com.mbx.dynamickeycards.item.BoundSensorBlockItem;
 import com.mbx.dynamickeycards.item.LinkedReaderBlockItem;
 import com.mbx.dynamickeycards.item.ReceiverBlockItem;
 import com.mbx.dynamickeycards.item.SensorBlockItem;
+import com.mbx.dynamickeycards.item.SirenBlockItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -77,6 +79,10 @@ public class DKBlocks {
     public static final DeferredBlock<Block> RECEIVER = register("receiver",
             () -> new ReceiverBlock(props()), ReceiverBlockItem::new);
 
+    /** Purely an output - the item form is a {@link SirenBlockItem} so it can be bound to a source before placement, but an unbound one still runs off plain redstone. */
+    public static final DeferredBlock<Block> SIREN = register("siren",
+            () -> new SirenBlock(sirenProps()), SirenBlockItem::new);
+
     private static DeferredBlock<Block> registerReader(String name) {
         return register(name, () -> new CardReaderBlock(props()), LinkedReaderBlockItem::new);
     }
@@ -95,6 +101,28 @@ public class DKBlocks {
     private static BlockBehaviour.Properties props() {
         return BlockBehaviour.Properties.of().noOcclusion().strength(0.5f).sound(SoundType.METAL);
     }
+
+    /**
+     * A spinning siren actually lights its surroundings, the way a torch does - without this the
+     * lens only looks bright and the light it appears to cast falls on nothing. Tied to
+     * {@link SirenBlock#LIT}, which only flips when the siren starts or stops, so the lighting
+     * recalculation it triggers happens twice per activation rather than once per animation frame.
+     */
+    private static BlockBehaviour.Properties sirenProps() {
+        return props().lightLevel(state -> state.getValue(SirenBlock.LIT) ? SIREN_LIT_LIGHT : 0);
+    }
+
+    /**
+     * Deliberately dim. A block that emits light floors its <em>own</em> faces at that level -
+     * {@code LevelRenderer.getLightColor} takes {@code max(block light, state.getLightEmission())},
+     * and the light engine writes the value into the map at the block's own position, so there is
+     * no exempting the metal base from it and no recovering what the light would have been without
+     * it. Whatever this is, the base steps up by it the instant the siren starts turning, which a
+     * shader pack reads as the base itself going luminous. At 4 that step is small enough not to
+     * register, while the siren still puts a pool of light at its feet instead of dying in a dark
+     * room. It was 10, which was too much to miss.
+     */
+    private static final int SIREN_LIT_LIGHT = 4;
 
     /** Same hardness/resistance as vanilla obsidian; needs the same tool tier as obsidian too. */
     private static BlockBehaviour.Properties obsidianProps() {

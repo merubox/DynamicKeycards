@@ -1,0 +1,78 @@
+{
+ "parent": "block/block",
+ "render_type": "translucent",
+ "textures": {
+  "siren": "dynamickeycards:block/siren/siren",
+  "particle": "dynamickeycards:block/siren/siren"
+ },
+ "elements": [
+  {
+   "from": [
+    5,
+    0.0,
+    5
+   ],
+   "to": [
+    11,
+    2.0,
+    11
+   ],
+   "faces": {
+    "north": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      6,
+      6,
+      8
+     ]
+    },
+    "south": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      6,
+      6,
+      8
+     ]
+    },
+    "east": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      6,
+      6,
+      8
+     ]
+    },
+    "west": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      6,
+      6,
+      8
+     ]
+    },
+    "up": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      0,
+      6,
+      6
+     ]
+    },
+    "down": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      8,
+      1,
+      9
+     ]
+    }
+   }
+  }
+ ]
+}

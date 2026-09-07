@@ -7,6 +7,7 @@ import com.mbx.dynamickeycards.registry.DKCreativeTabs;
 import com.mbx.dynamickeycards.registry.DKItems;
 import com.mbx.dynamickeycards.registry.DKMenuTypes;
 import com.mbx.dynamickeycards.registry.DKRecipes;
+import com.mbx.dynamickeycards.registry.DKSoundEvents;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -25,5 +26,6 @@ public class DynamicKeycards {
         DKMenuTypes.MENU_TYPES.register(modBus);
         DKCreativeTabs.TABS.register(modBus);
         DKRecipes.RECIPE_SERIALIZERS.register(modBus);
+        DKSoundEvents.SOUND_EVENTS.register(modBus);
     }
 }

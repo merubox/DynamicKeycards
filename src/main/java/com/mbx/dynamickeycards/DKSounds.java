@@ -9,8 +9,10 @@ import net.minecraft.world.level.Level;
 /**
  * Feedback tones for the card machines, so the result is audible without watching the
  * status lights: high bell = pass/complete, mid pling = registered, low pling = removed
- * or cancelled, low bass = denied. Vanilla note block sounds, plus one vanilla button click
- * ({@link #manualTrigger}) — no custom assets.
+ * or cancelled, low bass = denied. Vanilla note block sounds, plus two sounds that stand
+ * outside that vocabulary on purpose ({@link #manualTrigger}, {@link #valueConfirm}) — no
+ * custom assets. The siren is not here: a tone held for as long as a light turns is not feedback
+ * and has none of this in common with it, so it lives in {@link com.mbx.dynamickeycards.block.SirenTone}.
  * Call server-side only; the sound is broadcast to nearby players.
  */
 public final class DKSounds {
@@ -50,6 +52,17 @@ public final class DKSounds {
     /** Register mode armed / duplication source inserted. */
     public static void arm(Level level, BlockPos pos) {
         play(level, pos, SoundEvents.NOTE_BLOCK_PLING.value(), 0.35f, 1.1f);
+    }
+
+    /**
+     * A value confirmed on a device's config UI (signal length, trigger duration) - two vanilla
+     * sounds layered quietly on top of each other, a sharp high click plus a very faint xylophone
+     * note. Outside the five-tone vocabulary above on purpose: it exists to match what players
+     * already hear from value-adjustment scales elsewhere, not to say anything about a card.
+     */
+    public static void valueConfirm(Level level, BlockPos pos) {
+        play(level, pos, SoundEvents.ITEM_FRAME_ADD_ITEM, 0.25f, 2f);
+        play(level, pos, SoundEvents.NOTE_BLOCK_IRON_XYLOPHONE.value(), 0.03f, 1.125f);
     }
 
     private static void play(Level level, BlockPos pos, SoundEvent sound, float volume, float pitch) {

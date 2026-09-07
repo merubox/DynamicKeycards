@@ -18,7 +18,7 @@ public class DKCreativeTabs {
                     .title(Component.translatable("itemGroup.dynamickeycards"))
                     .icon(() -> new ItemStack(DKItems.GOLDEN_KEYCARD.get()))
                     .displayItems((params, output) -> {
-                        // DKBlocks.RECEIVER is the last block registered, so this lands the chip
+                        // DKBlocks.SIREN is the last block registered, so this lands the chip
                         // right after it, ahead of every card - see DKItems.DK_CHIP's own doc.
                         DKBlocks.TAB_BLOCKS.forEach(item -> output.accept(item.get()));
                         output.accept(DKItems.DK_CHIP.get());

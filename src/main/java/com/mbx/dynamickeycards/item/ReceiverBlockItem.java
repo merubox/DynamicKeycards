@@ -27,19 +27,20 @@ import java.util.UUID;
  * {@code BoundSensorBlockItem}. Placing it then carries the bound id into the new block entity,
  * see each block's {@code setPlacedBy}.
  */
-public class ReceiverBlockItem extends BlockItem {
+public class ReceiverBlockItem extends BlockItem implements SourceBindableItem {
 
     public ReceiverBlockItem(Block block, Item.Properties properties) {
         super(block, properties);
     }
 
+    @Override
     public void bindTo(ItemStack stack, UUID sourceId) {
         stack.set(DKComponents.BOUND_SOURCE.get(), sourceId);
     }
 
     @Nullable
     public static UUID boundSource(ItemStack stack) {
-        return stack.get(DKComponents.BOUND_SOURCE.get());
+        return SourceBindableItem.boundSource(stack);
     }
 
     /** Enchant-glint shimmer once bound, so it's identifiable at a glance in an inventory. */

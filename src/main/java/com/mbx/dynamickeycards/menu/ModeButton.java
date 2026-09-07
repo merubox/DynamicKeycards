@@ -15,8 +15,8 @@ import net.minecraft.resources.ResourceLocation;
  * hovered, {@link #green} (this button's mode is the active one), and plain. An inactive button
  * ({@code active == false}) draws the plain state plus a dimming overlay instead of any
  * hover/press feedback - only {@link LinkDeviceScreen} ever deactivates a button (a reader-bound
- * sensor's locked mode buttons, and the Create-only modes when Create isn't installed), so for
- * the other two screens that path is simply never taken.
+ * sensor's locked mode buttons, and the Create-only modes when Create isn't installed), so on
+ * every other screen that path is simply never taken.
  */
 class ModeButton extends AbstractButton {
 
@@ -34,6 +34,12 @@ class ModeButton extends AbstractButton {
     static final int ICON_BUTTON = 96;
     /** The receiver's toggle mode. */
     static final int ICON_LEVER = 112;
+    /** The siren's silent tier. */
+    static final int ICON_MUTE = 128;
+    /** The siren's low intermittent tier. */
+    static final int ICON_CAUTION = 144;
+    /** The siren's full-alarm tier. */
+    static final int ICON_EMERGENCY = 160;
 
     private static final ResourceLocation WIDGETS =
             ResourceLocation.fromNamespaceAndPath(DynamicKeycards.MOD_ID, "textures/gui/broadcast_widgets.png");
@@ -43,7 +49,7 @@ class ModeButton extends AbstractButton {
     private static final int SIZE = 18;
     /** Widths of the two sheets, needed by {@code blit}'s explicit-size form. */
     private static final int WIDGETS_SHEET_WIDTH = 72;
-    private static final int ICONS_SHEET_WIDTH = 128;
+    private static final int ICONS_SHEET_WIDTH = 176;
     /** u offsets of {@link #WIDGETS}' four states. */
     private static final int STATE_PLAIN = 0;
     private static final int STATE_HOVER = 18;

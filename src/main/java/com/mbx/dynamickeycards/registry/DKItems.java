@@ -78,6 +78,29 @@ public class DKItems {
     }
 
     /** Index of this card's color in {@link #COLORS}, or 0 if unrecognized. */
+    /**
+     * Every card that can hang in an accessory mod's necklace slot - see
+     * {@code WornKeycards}. Blank cards are included even though they open nothing: they are
+     * still cards, and refusing to let one hang is a distinction the player has no reason to
+     * expect. Excluded are the ones that only work in hand at all: maintenance cards and the
+     * DK chip.
+     *
+     * <p>Kept in sync by hand with {@code data/dynamickeycards/tags/item/wearable_cards.json} -
+     * the tag opts the items into each mod's slot, this list is what the capability registration
+     * needs (tags aren't loaded yet at that point).
+     */
+    public static List<Item> wearableCards() {
+        List<Item> cards = new ArrayList<>();
+        for (List<DeferredItem<Item>> group : List.of(BLANK_CARDS, KEYCARDS, MANAGER_CARDS, MEMBER_CARDS)) {
+            for (DeferredItem<Item> card : group) {
+                cards.add(card.get());
+            }
+        }
+        cards.add(GOLDEN_KEYCARD.get());
+        cards.add(ESTATE_KEYCARD.get());
+        return cards;
+    }
+
     public static int colorIndex(ItemStack stack) {
         for (int i = 0; i < COLORS.size(); i++) {
             if (stack.is(BLANK_CARDS.get(i).get()) || stack.is(KEYCARDS.get(i).get())

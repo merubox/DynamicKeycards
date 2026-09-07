@@ -1,0 +1,215 @@
+{
+ "parent": "block/block",
+ "render_type": "translucent",
+ "textures": {
+  "siren": "dynamickeycards:block/siren/siren",
+  "particle": "dynamickeycards:block/siren/siren"
+ },
+ "elements": [
+  {
+   "from": [
+    5,
+    4.5,
+    5
+   ],
+   "to": [
+    11,
+    6.5,
+    11
+   ],
+   "faces": {
+    "north": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      6,
+      6,
+      8
+     ]
+    },
+    "south": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      6,
+      6,
+      8
+     ]
+    },
+    "east": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      6,
+      6,
+      8
+     ]
+    },
+    "west": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      6,
+      6,
+      8
+     ]
+    },
+    "up": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      0,
+      6,
+      6
+     ]
+    },
+    "down": {
+     "texture": "#siren",
+     "uv": [
+      0,
+      8,
+      1,
+      9
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    6,
+    6.5,
+    6
+   ],
+   "to": [
+    10,
+    10.5,
+    10
+   ],
+   "faces": {
+    "north": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      4,
+      10,
+      8
+     ]
+    },
+    "south": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      4,
+      10,
+      8
+     ]
+    },
+    "east": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      4,
+      10,
+      8
+     ]
+    },
+    "west": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      4,
+      10,
+      8
+     ]
+    },
+    "up": {
+     "texture": "#siren",
+     "uv": [
+      6,
+      0,
+      10,
+      4
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7,
+    10.5,
+    7
+   ],
+   "to": [
+    9,
+    11.5,
+    9
+   ],
+   "faces": {
+    "north": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      2,
+      12,
+      3
+     ]
+    },
+    "south": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      2,
+      12,
+      3
+     ]
+    },
+    "east": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      2,
+      12,
+      3
+     ]
+    },
+    "west": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      2,
+      12,
+      3
+     ]
+    },
+    "up": {
+     "texture": "#siren",
+     "uv": [
+      10,
+      0,
+      12,
+      2
+     ]
+    }
+   }
+  }
+ ],
+ "display": {
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  }
+ }
+}

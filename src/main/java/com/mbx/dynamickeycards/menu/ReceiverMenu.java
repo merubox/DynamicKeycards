@@ -28,20 +28,13 @@ public class ReceiverMenu extends AbstractDeviceModeMenu<ReceiverBlockEntity> {
                 () -> getDevice().setMode(ReceiverMode.TOGGLE));
     }
 
+    /** Just the release delay, whose default is 0 - an instant cutoff. */
     @Override
-    protected int durationTicks() {
-        return getDevice().getReleaseDelayTicks();
-    }
-
-    @Override
-    protected void setDurationTicks(int ticks) {
-        getDevice().setReleaseDelayTicks(ticks);
-    }
-
-    /** Back to 0 - an instant cutoff. */
-    @Override
-    protected void resetDurationTicks() {
-        getDevice().resetReleaseDelayTicks();
+    protected List<DurationSetting> durations() {
+        return List.of(new DurationSetting(
+                () -> getDevice().getReleaseDelayTicks(),
+                ticks -> getDevice().setReleaseDelayTicks(ticks),
+                () -> getDevice().resetReleaseDelayTicks()));
     }
 
     public static ReceiverMenu fromNetwork(int containerId, Inventory playerInventory, RegistryFriendlyByteBuf extraData) {

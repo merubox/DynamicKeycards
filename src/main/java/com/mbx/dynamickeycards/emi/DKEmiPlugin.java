@@ -3,6 +3,7 @@ package com.mbx.dynamickeycards.emi;
 import com.mbx.dynamickeycards.DynamicKeycards;
 import com.mbx.dynamickeycards.menu.LinkDeviceScreen;
 import com.mbx.dynamickeycards.menu.ReceiverScreen;
+import com.mbx.dynamickeycards.menu.SirenScreen;
 import com.mbx.dynamickeycards.menu.TransmitterScreen;
 import com.mbx.dynamickeycards.registry.DKBlocks;
 import com.mbx.dynamickeycards.registry.DKItems;
@@ -18,6 +19,7 @@ import net.neoforged.neoforge.registries.DeferredItem;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * EMI integration: shows the card-machine processes (registering a blank card into a
@@ -30,6 +32,14 @@ import java.util.List;
  */
 @EmiEntrypoint
 public class DKEmiPlugin implements EmiPlugin {
+
+    /** The device icon, plus the whole screen while a duration popup is open - see the call site. */
+    private static void excludeDeviceUi(Consumer<Bounds> consumer, int[] icon, int[] popup) {
+        consumer.accept(new Bounds(icon[0], icon[1], icon[2], icon[3]));
+        if (popup != null) {
+            consumer.accept(new Bounds(popup[0], popup[1], popup[2], popup[3]));
+        }
+    }
 
     private static ResourceLocation id(String path) {
         return ResourceLocation.fromNamespaceAndPath(DynamicKeycards.MOD_ID, path);
@@ -45,33 +55,18 @@ public class DKEmiPlugin implements EmiPlugin {
         // otherwise EMI's item panel draws its stacks right over the config screen's device
         // icon (which sits outside the screen's own background rectangle, next to the arrow)
         // - and, while the pulse length popup is open, over that full-screen overlay too
-        registry.addExclusionArea(LinkDeviceScreen.class, (screen, consumer) -> {
-            int[] bounds = screen.getDeviceIconScreenBounds();
-            consumer.accept(new Bounds(bounds[0], bounds[1], bounds[2], bounds[3]));
-
-            int[] popupBounds = screen.getPulseLengthPopupScreenBounds();
-            if (popupBounds != null) {
-                consumer.accept(new Bounds(popupBounds[0], popupBounds[1], popupBounds[2], popupBounds[3]));
-            }
-        });
-        registry.addExclusionArea(ReceiverScreen.class, (screen, consumer) -> {
-            int[] bounds = screen.getDeviceIconScreenBounds();
-            consumer.accept(new Bounds(bounds[0], bounds[1], bounds[2], bounds[3]));
-
-            int[] popupBounds = screen.getPulseLengthPopupScreenBounds();
-            if (popupBounds != null) {
-                consumer.accept(new Bounds(popupBounds[0], popupBounds[1], popupBounds[2], popupBounds[3]));
-            }
-        });
-        registry.addExclusionArea(TransmitterScreen.class, (screen, consumer) -> {
-            int[] bounds = screen.getDeviceIconScreenBounds();
-            consumer.accept(new Bounds(bounds[0], bounds[1], bounds[2], bounds[3]));
-
-            int[] popupBounds = screen.getPulseLengthPopupScreenBounds();
-            if (popupBounds != null) {
-                consumer.accept(new Bounds(popupBounds[0], popupBounds[1], popupBounds[2], popupBounds[3]));
-            }
-        });
+        registry.addExclusionArea(LinkDeviceScreen.class, (screen, consumer) ->
+                excludeDeviceUi(consumer, screen.getDeviceIconScreenBounds(),
+                        screen.getPulseLengthPopupScreenBounds()));
+        registry.addExclusionArea(ReceiverScreen.class, (screen, consumer) ->
+                excludeDeviceUi(consumer, screen.getDeviceIconScreenBounds(),
+                        screen.getPulseLengthPopupScreenBounds()));
+        registry.addExclusionArea(TransmitterScreen.class, (screen, consumer) ->
+                excludeDeviceUi(consumer, screen.getDeviceIconScreenBounds(),
+                        screen.getPulseLengthPopupScreenBounds()));
+        registry.addExclusionArea(SirenScreen.class, (screen, consumer) ->
+                excludeDeviceUi(consumer, screen.getDeviceIconScreenBounds(),
+                        screen.getPulseLengthPopupScreenBounds()));
 
         registry.addCategory(REGISTERING);
         registry.addCategory(DUPLICATING);

@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "G": {
+      "item": "minecraft:red_stained_glass"
+    },
+    "L": {
+      "item": "minecraft:redstone_lamp"
+    },
+    "I": {
+      "tag": "c:ingots/iron"
+    },
+    "K": {
+      "item": "dynamickeycards:dk_chip"
+    }
+  },
+  "pattern": [
+    " G ",
+    "GLG",
+    "IKI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "dynamickeycards:siren"
+  },
+  "show_notification": true
+}

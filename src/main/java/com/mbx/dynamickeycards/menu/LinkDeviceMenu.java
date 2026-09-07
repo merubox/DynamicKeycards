@@ -1,5 +1,6 @@
 package com.mbx.dynamickeycards.menu;
 
+import com.mbx.dynamickeycards.DKSounds;
 import com.mbx.dynamickeycards.block.AdvancedSensorBlockEntity;
 import com.mbx.dynamickeycards.block.BoundReaderMode;
 import com.mbx.dynamickeycards.block.LinkDeviceBlockEntity;
@@ -8,8 +9,6 @@ import com.mbx.dynamickeycards.compat.create.CreateAvailability;
 import com.mbx.dynamickeycards.registry.DKMenuTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -110,55 +109,51 @@ public class LinkDeviceMenu extends AbstractContainerMenu {
     @Override
     public boolean clickMenuButton(Player player, int id) {
         if (id >= SIGNAL_LENGTH_ID_BASE) {
-            // 0 is a legitimate value (e.g. a sensor released the instant its hold delay lapses,
-            // rather than lingering) - not clamped up to 1
-            int ticks = Math.clamp(id - SIGNAL_LENGTH_ID_BASE, 0, 72000);
-            if (ticks != device.getSignalLength()) {
-                device.setSignalLength(ticks);
-                playPulseConfirmSound();
-            }
-            return true;
+            return applySignalLength(id - SIGNAL_LENGTH_ID_BASE);
         }
         // a sensor bound to a reader repurposes the three mode buttons to its own BoundReaderMode
         // set instead of SignalMode - see AdvancedSensorBlockEntity's own doc for why
         if (device instanceof AdvancedSensorBlockEntity sensor && sensor.getBoundReader() != null) {
-            switch (id) {
-                case BUTTON_NORMAL_MODE -> sensor.setBoundReaderMode(BoundReaderMode.SENSOR_CENTRIC_SIMULTANEOUS);
-                case BUTTON_LINK_MODE -> sensor.setBoundReaderMode(BoundReaderMode.READER_ONLY);
-                case BUTTON_SIMULTANEOUS_MODE -> sensor.setBoundReaderMode(BoundReaderMode.SIMULTANEOUS);
-                case BUTTON_RESET -> device.clearSignalLength();
-                default -> {
-                    return false;
-                }
-            }
-            return true;
+            return boundSensorButton(sensor, id);
         }
+        return deviceButton(id);
+    }
+
+    /** Always handled, even when the value is unchanged - the button did belong to this menu. */
+    private boolean applySignalLength(int ticks) {
+        // 0 is a legitimate value (e.g. a sensor released the instant its hold delay lapses,
+        // rather than lingering) - not clamped up to 1
+        int clamped = Math.clamp(ticks, 0, 72000);
+        if (clamped != device.getSignalLength()) {
+            device.setSignalLength(clamped);
+            DKSounds.valueConfirm(device.getLevel(), device.getBlockPos());
+        }
+        return true;
+    }
+
+    /**
+     * Reset here clears the signal length only: a sensor bound to a reader doesn't own its
+     * frequency either, so there'd be nothing of its own to clear.
+     */
+    private boolean boundSensorButton(AdvancedSensorBlockEntity sensor, int id) {
         switch (id) {
-            // a sensor bound to *another sensor* already has its actual mode/frequency owned by
-            // that sensor - these three are locked out while that's the case, see
-            // LinkDeviceBlockEntity#isLinkModeEditable
-            case BUTTON_NORMAL_MODE -> {
-                if (device.isLinkModeEditable()) {
-                    device.setSignalMode(SignalMode.NORMAL);
-                }
+            case BUTTON_NORMAL_MODE -> sensor.setBoundReaderMode(BoundReaderMode.SENSOR_CENTRIC_SIMULTANEOUS);
+            case BUTTON_LINK_MODE -> sensor.setBoundReaderMode(BoundReaderMode.READER_ONLY);
+            case BUTTON_SIMULTANEOUS_MODE -> sensor.setBoundReaderMode(BoundReaderMode.SIMULTANEOUS);
+            case BUTTON_RESET -> device.clearSignalLength();
+            default -> {
+                return false;
             }
-            case BUTTON_LINK_MODE -> {
-                if (device.isLinkModeEditable()) {
-                    device.setSignalMode(SignalMode.LINK);
-                }
-            }
-            case BUTTON_SIMULTANEOUS_MODE -> {
-                if (device.isLinkModeEditable()) {
-                    device.setSignalMode(SignalMode.SIMULTANEOUS);
-                }
-            }
-            case BUTTON_RESET -> {
-                if (device.isFrequencyEditable()) {
-                    device.setFrequencySlot(0, ItemStack.EMPTY);
-                    device.setFrequencySlot(1, ItemStack.EMPTY);
-                }
-                device.clearSignalLength();
-            }
+        }
+        return true;
+    }
+
+    private boolean deviceButton(int id) {
+        switch (id) {
+            case BUTTON_NORMAL_MODE -> setSignalMode(SignalMode.NORMAL);
+            case BUTTON_LINK_MODE -> setSignalMode(SignalMode.LINK);
+            case BUTTON_SIMULTANEOUS_MODE -> setSignalMode(SignalMode.SIMULTANEOUS);
+            case BUTTON_RESET -> reset();
             default -> {
                 return false;
             }
@@ -167,17 +162,23 @@ public class LinkDeviceMenu extends AbstractContainerMenu {
     }
 
     /**
-     * Two plain vanilla sounds (not one of this mod's own {@code DKSounds} tones) layered
-     * quietly on top of each other - a sharp high click plus a very faint xylophone note.
-     * Deliberately not folded into {@code DKSounds}: that class documents this mod's own
-     * five-tone feedback vocabulary, and this pairing exists only to match what players
-     * already hear from value-adjustment scales elsewhere, independent of that vocabulary.
+     * A sensor bound to *another sensor* already has its actual mode owned by that sensor - the
+     * mode buttons are locked out while that's the case, see
+     * {@link LinkDeviceBlockEntity#isLinkModeEditable}.
      */
-    private void playPulseConfirmSound() {
-        Level level = device.getLevel();
-        BlockPos pos = device.getBlockPos();
-        level.playSound(null, pos, SoundEvents.ITEM_FRAME_ADD_ITEM, SoundSource.BLOCKS, 0.25f, 2f);
-        level.playSound(null, pos, SoundEvents.NOTE_BLOCK_IRON_XYLOPHONE.value(), SoundSource.BLOCKS, 0.03f, 1.125f);
+    private void setSignalMode(SignalMode mode) {
+        if (device.isLinkModeEditable()) {
+            device.setSignalMode(mode);
+        }
+    }
+
+    /** The signal length is always this device's own, so it resets even when the frequency can't. */
+    private void reset() {
+        if (device.isFrequencyEditable()) {
+            device.setFrequencySlot(0, ItemStack.EMPTY);
+            device.setFrequencySlot(1, ItemStack.EMPTY);
+        }
+        device.clearSignalLength();
     }
 
     public static LinkDeviceMenu fromNetwork(int containerId, Inventory playerInventory, RegistryFriendlyByteBuf extraData) {

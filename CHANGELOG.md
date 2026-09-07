@@ -4,6 +4,39 @@
 
 All notable changes to Dynamic Keycards are documented here.
 
+## 0.1.9
+
+### Added
+- **Siren.** A rotating warning light that turns for as long as a redstone signal
+  reaches it, or for as long as a device it was bound to is running. Hold it and
+  right-click a card reader, transmitter, or advanced sensor to bind it before
+  placing; plain redstone works on its own.
+  - Wrench or maintenance card to open its settings: **Mute**, **Caution**, or
+    **Emergency**, plus a **Turn Speed** (0.2s to 3s per revolution) and a
+    **Release Delay** that keeps it turning after its input drops.
+  - Caution holds a flat mechanical tone for as long as the light turns.
+    Emergency climbs and falls away once every two seconds, and carries twice as
+    far.
+  - It lights the ground around it while running.
+- **Cards can be worn.** With Curios or Accessories installed, any keycard, blank
+  card, manager card, or member card goes in the necklace slot — including the
+  golden and estate keycards. A worn card is drawn on your chest, and walking up
+  to a reader and right-clicking it empty-handed passes with the card you have on,
+  so you never have to hold it.
+
+### Changed
+- With Create absent, a reader or sensor already in Reader-Only Mode now has that
+  button locked too, matching the two Create-only modes beside it.
+- Right-clicking a card duplicator while standing with a wrench or maintenance
+  card is now refused, instead of being taken as a card operation.
+
+### Fixed
+- Resetting a reader that was linked to others only wiped its own registrations;
+  cards registered on the rest of the group still passed.
+- Cancelling a duplication left Jade reporting a copy as still pending.
+- Dyed advanced sensors were drawn without face shading, so their sides, top and
+  bottom were indistinguishable from the front.
+
 ## 0.1.8
 
 ### Added

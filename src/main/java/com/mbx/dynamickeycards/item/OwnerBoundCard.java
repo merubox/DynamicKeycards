@@ -36,13 +36,16 @@ final class OwnerBoundCard {
     }
 
     static InteractionResultHolder<ItemStack> activate(Level level, Player player, ItemStack stack) {
+        if (boundOwner(stack) != null) {
+            // Already bound: nothing left to activate. Checked before the client branch below and
+            // returned as PASS rather than a silent success, so the client doesn't play the
+            // use-item swing for an interaction that does nothing - the foil (isFoil) already
+            // shows the card is bound. BOUND_OWNER is a data component, so the client knows this
+            // too and both sides agree without a round trip.
+            return InteractionResultHolder.pass(stack);
+        }
         if (level.isClientSide) {
             return InteractionResultHolder.sidedSuccess(stack, true);
-        }
-        if (boundOwner(stack) != null) {
-            // already bound — the foil (isFoil) already shows this visually, so this
-            // right-click is a silent no-op rather than repeating it as an actionbar message
-            return InteractionResultHolder.sidedSuccess(stack, false);
         }
         Long deadline = stack.get(DKComponents.ACTIVATION_DEADLINE.get());
         if (deadline != null && level.getGameTime() <= deadline) {
